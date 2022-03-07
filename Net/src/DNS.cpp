@@ -104,7 +104,7 @@ HostEntry DNS::hostByName(const std::string& hostname, unsigned
 	throw NetException(); // to silence compiler
 }
 
-
+#ifndef USE_LIBZT
 HostEntry DNS::hostByAddress(const IPAddress& address, unsigned
 #ifdef POCO_HAVE_ADDRINFO
 							 hintFlags
@@ -158,8 +158,10 @@ HostEntry DNS::hostByAddress(const IPAddress& address, unsigned
 	error(err, address.toString()); // will throw an appropriate exception
 	throw NetException(); // to silence compiler
 }
+#endif
 
 
+#ifndef USE_LIBZT
 HostEntry DNS::resolve(const std::string& address)
 {
 	IPAddress ip;
@@ -177,8 +179,9 @@ HostEntry DNS::resolve(const std::string& address)
 		return hostByName(address);
 	}
 }
+#endif
 
-
+#ifndef USE_LIBZT
 IPAddress DNS::resolveOne(const std::string& address)
 {
 	const HostEntry& entry = resolve(address);
@@ -187,7 +190,7 @@ IPAddress DNS::resolveOne(const std::string& address)
 	else
 		throw NoAddressFoundException(address);
 }
-
+#endif
 
 HostEntry DNS::thisHost()
 {

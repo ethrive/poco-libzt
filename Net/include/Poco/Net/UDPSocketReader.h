@@ -101,7 +101,12 @@ public:
 	{
 		typedef typename UDPHandlerImpl<S>::MsgSizeT RT;
 		char* p = 0;
+
+#ifdef USE_LIBZT
+		struct zts_sockaddr* pSA = 0;
+#else
 		struct sockaddr* pSA = 0;
+#endif
 		poco_socklen_t* pAL = 0;
 		poco_socket_t sockfd = sock.impl()->sockfd();
 		nextHandler();
@@ -113,7 +118,11 @@ public:
 				Poco::UInt16 off = handler().offset();
 				poco_socklen_t* pAL = reinterpret_cast<poco_socklen_t*>(p + sizeof(RT));
 				*pAL = SocketAddress::MAX_ADDRESS_LENGTH;
+#ifdef USE_LIBZT
+				struct zts_sockaddr* pSA = reinterpret_cast<struct zts_sockaddr*>(p + sizeof(RT) + sizeof(poco_socklen_t));
+#else
 				struct sockaddr* pSA = reinterpret_cast<struct sockaddr*>(p + sizeof(RT) + sizeof(poco_socklen_t));
+#endif
 				RT ret = sock.receiveFrom(p + off, S - off - 1, &pSA, &pAL);
 				if (ret < 0)
 				{

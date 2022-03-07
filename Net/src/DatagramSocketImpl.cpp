@@ -31,10 +31,18 @@ DatagramSocketImpl::DatagramSocketImpl()
 DatagramSocketImpl::DatagramSocketImpl(SocketAddress::Family family)
 {
 	if (family == SocketAddress::IPv4)
+#ifdef USE_LIBZT
+		init(ZTS_AF_INET);
+#else
 		init(AF_INET);
+#endif
 #if defined(POCO_HAVE_IPv6)
 	else if (family == SocketAddress::IPv6)
+#ifdef USE_LIBZT
+		init(ZTS_AF_INET6);
+#else
 		init(AF_INET6);
+#endif
 #endif
 #if defined(POCO_OS_FAMILY_UNIX)
 	else if (family == SocketAddress::UNIX_LOCAL)

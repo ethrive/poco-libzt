@@ -83,6 +83,7 @@ public:
 		///
 		/// Throws an IOException in case of any other error.
 
+#ifndef USE_LIBZT
 	static HostEntry hostByAddress(const IPAddress& address, unsigned hintFlags =
 #ifdef POCO_HAVE_ADDRINFO
 		DNS_HINT_AI_CANONNAME | DNS_HINT_AI_ADDRCONFIG
@@ -100,7 +101,9 @@ public:
 		/// Throws a DNSException in case of a general DNS error.
 		///
 		/// Throws an IOException in case of any other error.
+#endif
 
+#ifndef USE_LIBZT
 	static HostEntry resolve(const std::string& address);
 		/// Returns a HostEntry object containing the DNS information
 		/// for the host with the given IP address or host name.
@@ -118,6 +121,7 @@ public:
 		/// Throws a DNSException in case of a general DNS error.
 		///
 		/// Throws an IOException in case of any other error.
+#endif
 
 	static IPAddress resolveOne(const std::string& address);
 		/// Convenience method that calls resolve(address) and returns

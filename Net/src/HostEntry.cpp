@@ -72,11 +72,21 @@ HostEntry::HostEntry(struct addrinfo* ainfo)
 		{
 			switch (ai->ai_addr->sa_family)
 			{
+#ifdef USE_LIBZT
+			case ZTS_AF_INET:
+				_addresses.push_back(IPAddress(&reinterpret_cast<struct zts_sockaddr_in*>(ai->ai_addr)->sin_addr, sizeof(zts_in_addr)));
+				break;
+#else
 			case AF_INET:
 				_addresses.push_back(IPAddress(&reinterpret_cast<struct sockaddr_in*>(ai->ai_addr)->sin_addr, sizeof(in_addr)));
 				break;
+#endif
 #if defined(POCO_HAVE_IPv6)
+#ifdef USE_LIBZT
+			case ZTS_AF_INET6:
+#else
 			case AF_INET6:
+#endif
 				_addresses.push_back(IPAddress(&reinterpret_cast<struct sockaddr_in6*>(ai->ai_addr)->sin6_addr, sizeof(in6_addr), reinterpret_cast<struct sockaddr_in6*>(ai->ai_addr)->sin6_scope_id));
 				break;
 #endif

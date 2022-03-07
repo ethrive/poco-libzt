@@ -65,7 +65,12 @@ void DNSTest::testHostByName()
 void DNSTest::testHostByAddress()
 {
 	IPAddress ip1("80.122.195.86");
-	HostEntry he1 = DNS::hostByAddress(ip1);
+	HostEntry he1;
+#ifdef USE_LIBZT
+	assert(false);
+#else
+	he1 = DNS::hostByAddress(ip1);
+#endif
 	assertTrue (he1.name() == "mailhost.appinf.com");
 	assertTrue (he1.aliases().empty());
 	assertTrue (he1.addresses().size() >= 1);
@@ -74,8 +79,12 @@ void DNSTest::testHostByAddress()
 	IPAddress ip2("10.0.244.253");
 	try
 	{
+#ifdef USE_LIBZT
+		assert(false);
+#else
 		HostEntry he2 = DNS::hostByAddress(ip2);
 		fail("host not found - must throw");
+#endif
 	}
 	catch (HostNotFoundException&)
 	{

@@ -141,7 +141,11 @@ int DatagramSocket::receiveFrom(void* buffer, int length, SocketAddress& address
 }
 
 
+#if USE_LIBZT
+int DatagramSocket::receiveFrom(void* buffer, int length, struct zts_sockaddr** ppSA, poco_socklen_t** saLen, int flags)
+#else
 int DatagramSocket::receiveFrom(void* buffer, int length, struct sockaddr** ppSA, poco_socklen_t** saLen, int flags)
+#endif
 {
 	return impl()->receiveFrom(buffer, length, ppSA, saLen, flags);
 }
@@ -152,8 +156,11 @@ int DatagramSocket::receiveFrom(SocketBufVec& buffers, SocketAddress& address, i
 	return impl()->receiveFrom(buffers, address, flags);
 }
 
-
+#if USE_LIBZT
+int DatagramSocket::receiveFrom(SocketBufVec& buffers, struct zts_sockaddr** ppSA, poco_socklen_t** ppSALen, int flags)
+#else
 int DatagramSocket::receiveFrom(SocketBufVec& buffers, struct sockaddr** ppSA, poco_socklen_t** ppSALen, int flags)
+#endif
 {
 	return impl()->receiveFrom(buffers, ppSA, ppSALen, flags);
 }

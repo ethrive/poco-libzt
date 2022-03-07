@@ -137,10 +137,14 @@ protected:
 
 	void onBegin(const void* pSender, ICMPEventArgs& args)
 	{
+#ifdef USE_LIBZT
+		assert(false);
+#else
 		std::ostringstream os;
 		os << "Pinging " << args.hostName() << " [" << args.hostAddress() << "] with " << args.dataSize() << " bytes of data:" 
 		   << std::endl << "---------------------------------------------" << std::endl;
 		logger().information(os.str());
+#endif
 	}
 
 	void onReply(const void* pSender, ICMPEventArgs& args)
@@ -162,6 +166,9 @@ protected:
 
 	void onEnd(const void* pSender, ICMPEventArgs& args)
 	{
+#ifdef USE_LIBZT
+		assert(false);
+#else
 		std::ostringstream os;
 		os << std::endl << "--- Ping statistics for " << args.hostName() << " ---"
 		   << std::endl << "Packets: Sent=" << args.sent() << ", Received=" << args.received()
@@ -171,6 +178,7 @@ protected:
 		   << "ms, Average=" << args.avgRTT() << "ms" 
 		   << std::endl << "------------------------------------------";
 		logger().information(os.str());
+#endif
 	}
 
 private:

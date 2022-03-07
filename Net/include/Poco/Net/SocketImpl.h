@@ -215,8 +215,11 @@ public:
 		/// less than the number of bytes specified.
 		///
 		/// Always returns zero for platforms where not implemented.
-
+#if USE_LIBZT
+	int receiveFrom(void* buffer, int length, struct zts_sockaddr** ppSA, poco_socklen_t** ppSALen, int flags = 0);
+#else
 	int receiveFrom(void* buffer, int length, struct sockaddr** ppSA, poco_socklen_t** ppSALen, int flags = 0);
+#endif
 		/// Receives data from the socket and stores it
 		/// in buffer. Up to length bytes are received.
 		/// Stores the native address of the sender in
@@ -239,8 +242,12 @@ public:
 		/// Returns the number of bytes received.
 		///
 		/// Always returns zero for platforms where not implemented.
-
+#if USE_LIBZT
+	int receiveFrom(SocketBufVec& buffers, struct zts_sockaddr** ppSA, poco_socklen_t** ppSALen, int flags);
+#else
 	int receiveFrom(SocketBufVec& buffers, struct sockaddr** ppSA, poco_socklen_t** ppSALen, int flags);
+#endif
+
 		/// Receives data from the socket and stores it
 		/// in buffers.
 		/// Stores the native address of the sender in

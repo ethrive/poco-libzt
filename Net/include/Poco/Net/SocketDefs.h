@@ -20,6 +20,10 @@
 
 #include <vector>
 
+#if USE_LIBZT
+#include <ZeroTierSockets.h>
+#endif
+
 
 #define POCO_ENOERR 0
 
@@ -167,13 +171,72 @@
 	#endif
 	#define POCO_INVALID_SOCKET  -1
 	#define poco_socket_t        int
+#if USE_LIBZT
+	#define poco_socklen_t       zts_socklen_t
+#else
 	#define poco_socklen_t       socklen_t
+#endif
 	#define poco_fcntl_request_t int
 	#if defined(POCO_OS_FAMILY_BSD)
 		#define poco_ioctl_request_t unsigned long
 	#else
 		#define poco_ioctl_request_t int
 	#endif
+#if USE_LIBZT
+	#define poco_closesocket(s)  zts_bsd_close(s)
+	#define POCO_EINTR           ZTS_EINTR
+	#define POCO_EACCES          ZTS_EACCES
+	#define POCO_EFAULT          ZTS_EFAULT
+	#define POCO_EINVAL          ZTS_EINVAL
+	#define POCO_EMFILE          ZTS_EMFILE
+	#define POCO_EAGAIN          ZTS_EAGAIN
+	#define POCO_EWOULDBLOCK     ZTS_EWOULDBLOCK
+	#define POCO_EINPROGRESS     ZTS_EINPROGRESS
+	#define POCO_EALREADY        ZTS_EALREADY
+	#define POCO_ENOTSOCK        ZTS_ENOTSOCK
+	#define POCO_EDESTADDRREQ    ZTS_EDESTADDRREQ
+	#define POCO_EMSGSIZE        ZTS_EMSGSIZE
+	#define POCO_EPROTOTYPE      ZTS_EPROTOTYPE
+	#define POCO_ENOPROTOOPT     ZTS_ENOPROTOOPT
+	#define POCO_EPROTONOSUPPORT ZTS_EPROTONOSUPPORT
+	#if defined(ZTS_ESOCKTNOSUPPORT)
+		#define POCO_ESOCKTNOSUPPORT ZTS_ESOCKTNOSUPPORT
+	#else
+		#define POCO_ESOCKTNOSUPPORT -1
+	#endif
+	#define POCO_ENOTSUP         ENOTSUP
+	#define POCO_EPFNOSUPPORT    ZTS_EPFNOSUPPORT
+	#define POCO_EAFNOSUPPORT    ZTS_EAFNOSUPPORT
+	#define POCO_EADDRINUSE      ZTS_EADDRINUSE
+	#define POCO_EADDRNOTAVAIL   ZTS_EADDRNOTAVAIL
+	#define POCO_ENETDOWN        ZTS_ENETDOWN
+	#define POCO_ENETUNREACH     ZTS_ENETUNREACH
+	#define POCO_ENETRESET       ENETRESET
+	#define POCO_ECONNABORTED    ZTS_ECONNABORTED
+	#define POCO_ECONNRESET      ZTS_ECONNRESET
+	#define POCO_ENOBUFS         ZTS_ENOBUFS
+	#define POCO_EISCONN         ZTS_EISCONN
+	#define POCO_ENOTCONN        ZTS_ENOTCONN
+	#if defined(ZTS_ESHUTDOWN)
+		#define POCO_ESHUTDOWN    ZTS_ESHUTDOWN
+	#else
+		#define POCO_ESHUTDOWN   -2
+	#endif
+	#define POCO_ETIMEDOUT       ZTS_ETIMEDOUT
+	#define POCO_ECONNREFUSED    ZTS_ECONNREFUSED
+	#if defined(ZTS_EHOSTDOWN)
+		#define POCO_EHOSTDOWN   ZTS_EHOSTDOWN
+	#else
+		#define POCO_EHOSTDOWN   -3
+	#endif
+	#define POCO_EHOSTUNREACH    ZTS_EHOSTUNREACH
+	#define POCO_ESYSNOTREADY    -4
+	#define POCO_ENOTINIT        -5
+	#define POCO_HOST_NOT_FOUND  HOST_NOT_FOUND
+	#define POCO_TRY_AGAIN       TRY_AGAIN
+	#define POCO_NO_RECOVERY     NO_RECOVERY
+	#define POCO_NO_DATA         NO_DATA
+#else
 	#define poco_closesocket(s)  ::close(s)
 	#define POCO_EINTR           EINTR
 	#define POCO_EACCES          EACCES
@@ -228,6 +291,7 @@
 	#define POCO_NO_RECOVERY     NO_RECOVERY
 	#define POCO_NO_DATA         NO_DATA
 #endif
+#endif
 
 
 #if defined(POCO_OS_FAMILY_BSD) || (POCO_OS == POCO_OS_TRU64) || (POCO_OS == POCO_OS_AIX) || (POCO_OS == POCO_OS_IRIX) || (POCO_OS == POCO_OS_QNX) || (POCO_OS == POCO_OS_VXWORKS)
@@ -272,9 +336,17 @@
 
 #if defined(POCO_HAVE_SALEN)
 	#define poco_set_sa_len(pSA, len) (pSA)->sa_len = (len)
+#if USE_LIBZT
+	#define poco_set_sin_len(pSA) (pSA)->sin_len = sizeof(struct zts_sockaddr_in)
+#else
 	#define poco_set_sin_len(pSA) (pSA)->sin_len = sizeof(struct sockaddr_in)
+#endif
 	#if defined(POCO_HAVE_IPv6)
+#if USE_LIBZT
+		#define poco_set_sin6_len(pSA) (pSA)->sin6_len = sizeof(struct zts_sockaddr_in6)
+#else
 		#define poco_set_sin6_len(pSA) (pSA)->sin6_len = sizeof(struct sockaddr_in6)
+#endif
 	#endif
 	#if defined(POCO_OS_FAMILY_UNIX)
 		#define poco_set_sun_len(pSA, len) (pSA)->sun_len = (len)

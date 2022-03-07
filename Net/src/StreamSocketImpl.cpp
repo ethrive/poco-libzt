@@ -28,11 +28,20 @@ StreamSocketImpl::StreamSocketImpl()
 
 StreamSocketImpl::StreamSocketImpl(SocketAddress::Family family)
 {
+#ifdef USE_LIBZT
+	if (family == SocketAddress::IPv4)
+		init(ZTS_AF_INET);
+#if defined(POCO_HAVE_IPv6)
+	else if (family == SocketAddress::IPv6)
+		init(ZTS_AF_INET6);
+#endif
+#else
 	if (family == SocketAddress::IPv4)
 		init(AF_INET);
 #if defined(POCO_HAVE_IPv6)
 	else if (family == SocketAddress::IPv6)
 		init(AF_INET6);
+#endif
 #endif
 #if defined(POCO_OS_FAMILY_UNIX)
 	else if (family == SocketAddress::UNIX_LOCAL)

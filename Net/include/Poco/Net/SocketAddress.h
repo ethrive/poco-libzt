@@ -22,6 +22,10 @@
 #include "Poco/Net/SocketAddressImpl.h"
 #include <ostream>
 
+#if USE_LIBZT
+#include <ZeroTierSockets.h>
+#endif
+
 
 namespace Poco {
 
@@ -57,7 +61,8 @@ public:
 		/// Creates a wildcard (all zero) IPv4 SocketAddress.
 
 	explicit SocketAddress(Family family);
-		/// Creates a SocketAddress with unspecified (wildcard) IP address
+		/// Creates a SocketAddress with unspecified (wildcard) IP addr
+		/// ess
 		/// of the given family.
 
 	SocketAddress(const IPAddress& hostAddress, Poco::UInt16 portNumber);
@@ -138,8 +143,13 @@ public:
 	SocketAddress(const SocketAddress& addr);
 		/// Creates a SocketAddress by copying another one.
 
+#if USE_LIBZT
+	SocketAddress(const struct zts_sockaddr* addr, poco_socklen_t length);
+		/// Creates a SocketAddress from a libzt socket address.
+#else
 	SocketAddress(const struct sockaddr* addr, poco_socklen_t length);
 		/// Creates a SocketAddress from a native socket address.
+#endif
 
 	~SocketAddress();
 		/// Destroys the SocketAddress.
@@ -156,7 +166,11 @@ public:
 	poco_socklen_t length() const;
 		/// Returns the length of the internal native socket address.
 
+#if USE_LIBZT
+	const struct zts_sockaddr* addr() const;
+#else
 	const struct sockaddr* addr() const;
+#endif
 		/// Returns a pointer to the internal native socket address.
 
 	int af() const;
@@ -175,12 +189,20 @@ public:
 	enum
 	{
 		MAX_ADDRESS_LENGTH =
+#if USE_LIBZT
+#if defined(POCO_HAVE_IPv6)
+			sizeof(struct zts_sockaddr_in6)
+#else
+			sizeof(struct zts_sockaddr_in)
+#endif
+#else
 #if defined(POCO_OS_FAMILY_UNIX)
 			sizeof(struct sockaddr_un)
 #elif defined(POCO_HAVE_IPv6)
 			sizeof(struct sockaddr_in6)
 #else
 			sizeof(struct sockaddr_in)
+#endif
 #endif
 			/// Maximum length in bytes of a socket address.
 	};
@@ -200,11 +222,19 @@ private:
 	Ptr pImpl() const;
 
 	void newIPv4();
+#ifdef USE_LIBZT
+	void newIPv4(const zts_sockaddr_in*);
+#else
 	void newIPv4(const sockaddr_in*);
+#endif
 	void newIPv4(const IPAddress& hostAddress, Poco::UInt16 portNumber);
 
 #if defined(POCO_HAVE_IPv6)
+#ifdef USE_LIBZT
+	void newIPv6(const zts_sockaddr_in6*);
+#else
 	void newIPv6(const sockaddr_in6*);
+#endif
 	void newIPv6(const IPAddress& hostAddress, Poco::UInt16 portNumber);
 #endif
 
@@ -232,8 +262,11 @@ inline void SocketAddress::newIPv4()
 	_pImpl = new Poco::Net::Impl::IPv4SocketAddressImpl;
 }
 
-
+#if USE_LIBZT
+inline void SocketAddress::newIPv4(const zts_sockaddr_in* sockAddr)
+#else
 inline void SocketAddress::newIPv4(const sockaddr_in* sockAddr)
+#endif
 {
 	_pImpl = new Poco::Net::Impl::IPv4SocketAddressImpl(sockAddr);
 }
@@ -246,7 +279,11 @@ inline void SocketAddress::newIPv4(const IPAddress& hostAddress, Poco::UInt16 po
 
 
 #if defined(POCO_HAVE_IPv6)
+#if USE_LIBZT
+inline void SocketAddress::newIPv6(const zts_sockaddr_in6* sockAddr)
+#else
 inline void SocketAddress::newIPv6(const sockaddr_in6* sockAddr)
+#endif
 {
 	_pImpl = new Poco::Net::Impl::IPv6SocketAddressImpl(sockAddr);
 }

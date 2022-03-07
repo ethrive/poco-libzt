@@ -23,6 +23,10 @@
 #include <algorithm>
 #include <cstring>
 
+#if USE_LIBZT
+#include <ZeroTierSockets.h>
+#endif
+
 
 using Poco::RefCountedObject;
 using Poco::NumberParser;
@@ -138,10 +142,18 @@ SocketAddress::SocketAddress(const std::string& hostAndPort)
 SocketAddress::SocketAddress(const SocketAddress& socketAddress)
 {
 	if (socketAddress.family() == IPv4)
+#ifdef USE_LIBZT
+		newIPv4(reinterpret_cast<const zts_sockaddr_in*>(socketAddress.addr()));
+#else
 		newIPv4(reinterpret_cast<const sockaddr_in*>(socketAddress.addr()));
+#endif
 #if defined(POCO_HAVE_IPv6)
 	else if (socketAddress.family() == IPv6)
+#ifdef USE_LIBZT
+		newIPv6(reinterpret_cast<const zts_sockaddr_in6*>(socketAddress.addr()));
+#else
 		newIPv6(reinterpret_cast<const sockaddr_in6*>(socketAddress.addr()));
+#endif
 #endif
 #if defined(POCO_OS_FAMILY_UNIX)
 	else if (socketAddress.family() == UNIX_LOCAL)
@@ -150,19 +162,33 @@ SocketAddress::SocketAddress(const SocketAddress& socketAddress)
 }
 
 
+#if USE_LIBZT
+SocketAddress::SocketAddress(const struct zts_sockaddr* sockAddr, poco_socklen_t length)
+#else
 SocketAddress::SocketAddress(const struct sockaddr* sockAddr, poco_socklen_t length)
-{
-	if (length == sizeof(struct sockaddr_in) && sockAddr->sa_family == AF_INET)
-		newIPv4(reinterpret_cast<const struct sockaddr_in*>(sockAddr));
-#if defined(POCO_HAVE_IPv6)
-	else if (length == sizeof(struct sockaddr_in6) && sockAddr->sa_family == AF_INET6)
-		newIPv6(reinterpret_cast<const struct sockaddr_in6*>(sockAddr));
 #endif
-#if defined(POCO_OS_FAMILY_UNIX)
-	else if (length > 0 && length <= sizeof(struct sockaddr_un) && sockAddr->sa_family == AF_UNIX)
-		newLocal(reinterpret_cast<const sockaddr_un*>(sockAddr));
+{
+#if USE_LIBZT
+	if (length == sizeof(struct zts_sockaddr) && sockAddr->sa_family == ZTS_AF_INET)
+		newIPv4(reinterpret_cast<const struct zts_sockaddr_in*>(sockAddr));
+#if defined(POCO_HAVE_IPv6)
+	else if (length == sizeof(struct zts_sockaddr_in6) && sockAddr->sa_family == ZTS_AF_INET6)
+		newIPv6(reinterpret_cast<const struct zts_sockaddr_in6*>(sockAddr));
 #endif
 	else throw Poco::InvalidArgumentException("Invalid address length or family passed to SocketAddress()");
+#else
+  if (length == sizeof(struct sockaddr_in) && sockAddr->sa_family == AF_INET)
+    newIPv4(reinterpret_cast<const struct sockaddr_in*>(sockAddr));
+#if defined(POCO_HAVE_IPv6)
+  else if (length == sizeof(struct sockaddr_in6) && sockAddr->sa_family == AF_INET6)
+    newIPv6(reinterpret_cast<const struct sockaddr_in6*>(sockAddr));
+#endif
+#if defined(POCO_OS_FAMILY_UNIX)
+  else if (length > 0 && length <= sizeof(struct sockaddr_un) && sockAddr->sa_family == AF_UNIX)
+    newLocal(reinterpret_cast<const sockaddr_un*>(sockAddr));
+#endif
+  else throw Poco::InvalidArgumentException("Invalid address length or family passed to SocketAddress()");
+#endif
 }
 
 
@@ -189,10 +215,18 @@ SocketAddress& SocketAddress::operator = (const SocketAddress& socketAddress)
 	if (&socketAddress != this)
 	{
 		if (socketAddress.family() == IPv4)
+#ifdef USE_LIBZT
+			newIPv4(reinterpret_cast<const zts_sockaddr_in*>(socketAddress.addr()));
+#else
 			newIPv4(reinterpret_cast<const sockaddr_in*>(socketAddress.addr()));
+#endif
 #if defined(POCO_HAVE_IPv6)
 		else if (socketAddress.family() == IPv6)
+#ifdef USE_LIBZT
+			newIPv6(reinterpret_cast<const zts_sockaddr_in6*>(socketAddress.addr()));
+#else
 			newIPv6(reinterpret_cast<const sockaddr_in6*>(socketAddress.addr()));
+#endif
 #endif
 #if defined(POCO_OS_FAMILY_UNIX)
 		else if (socketAddress.family() == UNIX_LOCAL)
@@ -221,7 +255,11 @@ poco_socklen_t SocketAddress::length() const
 }
 
 
+#if USE_LIBZT
+const struct zts_sockaddr* SocketAddress::addr() const
+#else
 const struct sockaddr* SocketAddress::addr() const
+#endif
 {
 	return pImpl()->addr();
 }

@@ -39,7 +39,11 @@ public:
 	virtual IPAddress host() const = 0;
 	virtual UInt16 port() const = 0;
 	virtual poco_socklen_t length() const = 0;
+#if USE_LIBZT
+	virtual const struct zts_sockaddr* addr() const = 0;
+#else
 	virtual const struct sockaddr* addr() const = 0;
+#endif
 	virtual int af() const = 0;
 	virtual Family family() const = 0;
 	virtual std::string toString() const = 0;
@@ -57,18 +61,30 @@ class Net_API IPv4SocketAddressImpl: public SocketAddressImpl
 {
 public:
 	IPv4SocketAddressImpl();
+#if USE_LIBZT
+	IPv4SocketAddressImpl(const struct zts_sockaddr_in* addr);
+#else
 	IPv4SocketAddressImpl(const struct sockaddr_in* addr);
+#endif
 	IPv4SocketAddressImpl(const void* addr, UInt16 port);
 	IPAddress host() const;
 	UInt16 port() const;
 	poco_socklen_t length() const;
+#if USE_LIBZT
+	const struct zts_sockaddr* addr() const;
+#else
 	const struct sockaddr* addr() const;
+#endif
 	int af() const;
 	Family family() const;
 	std::string toString() const;
 
 private:
+#if USE_LIBZT
+	struct zts_sockaddr_in _addr;
+#else
 	struct sockaddr_in _addr;
+#endif
 };
 
 
@@ -93,11 +109,17 @@ inline poco_socklen_t IPv4SocketAddressImpl::length() const
 	return sizeof(_addr);
 }
 
-
+#if USE_LIBZT
+inline const struct zts_sockaddr* IPv4SocketAddressImpl::addr() const
+{
+	return reinterpret_cast<const struct zts_sockaddr*>(&_addr);
+}
+#else
 inline const struct sockaddr* IPv4SocketAddressImpl::addr() const
 {
 	return reinterpret_cast<const struct sockaddr*>(&_addr);
 }
+#endif
 
 
 inline int IPv4SocketAddressImpl::af() const
@@ -118,19 +140,31 @@ inline SocketAddressImpl::Family IPv4SocketAddressImpl::family() const
 class Net_API IPv6SocketAddressImpl: public SocketAddressImpl
 {
 public:
+#if USE_LIBZT
+	IPv6SocketAddressImpl(const struct zts_sockaddr_in6* addr);
+#else
 	IPv6SocketAddressImpl(const struct sockaddr_in6* addr);
+#endif
 	IPv6SocketAddressImpl(const void* addr, UInt16 port);
 	IPv6SocketAddressImpl(const void* addr, UInt16 port, UInt32 scope);
 	IPAddress host() const;
 	UInt16 port() const;
 	poco_socklen_t length() const;
+#if USE_LIBZT
+	const struct zts_sockaddr* addr() const;
+#else
 	const struct sockaddr* addr() const;
+#endif
 	int af() const;
 	Family family() const;
 	std::string toString() const;
 
 private:
+#if USE_LIBZT
+	struct zts_sockaddr_in6 _addr;
+#else
 	struct sockaddr_in6 _addr;
+#endif
 };
 
 
@@ -156,10 +190,17 @@ inline poco_socklen_t IPv6SocketAddressImpl::length() const
 }
 
 
+#if USE_LIBZT
+inline const struct zts_sockaddr* IPv6SocketAddressImpl::addr() const
+{
+	return reinterpret_cast<const struct zts_sockaddr*>(&_addr);
+}
+#else
 inline const struct sockaddr* IPv6SocketAddressImpl::addr() const
 {
 	return reinterpret_cast<const struct sockaddr*>(&_addr);
 }
+#endif
 
 
 inline int IPv6SocketAddressImpl::af() const
@@ -190,7 +231,11 @@ public:
 	IPAddress host() const;
 	UInt16 port() const;
 	poco_socklen_t length() const;
+#if USE_LIBZT
+	const struct zts_sockaddr* addr() const;
+#else
 	const struct sockaddr* addr() const;
+#endif
 	int af() const;
 	Family family() const;
 	const char* path() const;
@@ -224,11 +269,17 @@ inline poco_socklen_t LocalSocketAddressImpl::length() const
 	return sizeof(struct sockaddr_un);
 }
 
-
+#if USE_LIBZT
+inline const struct zts_sockaddr* LocalSocketAddressImpl::addr() const
+{
+	return reinterpret_cast<const struct zts_sockaddr*>(_pAddr);
+}
+#else
 inline const struct sockaddr* LocalSocketAddressImpl::addr() const
 {
 	return reinterpret_cast<const struct sockaddr*>(_pAddr);
 }
+#endif
 
 
 inline int LocalSocketAddressImpl::af() const

@@ -200,16 +200,30 @@ IPAddress::IPAddress(const SOCKET_ADDRESS& socket_address)
 }
 #endif
 
-
+#ifdef USE_LIBZT
+IPAddress::IPAddress(const struct zts_sockaddr& sockaddr)
+#else
 IPAddress::IPAddress(const struct sockaddr& sockaddr)
+#endif
 {
 	unsigned short family = sockaddr.sa_family;
+#ifdef USE_LIBZT
+	if (family == ZTS_AF_INET)
+		newIPv4(&reinterpret_cast<const struct zts_sockaddr_in*>(&sockaddr)->sin_addr);
+#else
 	if (family == AF_INET)
 		newIPv4(&reinterpret_cast<const struct sockaddr_in*>(&sockaddr)->sin_addr);
+#endif
 #if defined(POCO_HAVE_IPv6)
+#ifdef USE_LIBZT
+	else if (family == ZTS_AF_INET6)
+		newIPv6(&reinterpret_cast<const struct zts_sockaddr_in6*>(&sockaddr)->sin6_addr,
+			reinterpret_cast<const struct zts_sockaddr_in6*>(&sockaddr)->sin6_scope_id);
+#else
 	else if (family == AF_INET6)
 		newIPv6(&reinterpret_cast<const struct sockaddr_in6*>(&sockaddr)->sin6_addr,
 			reinterpret_cast<const struct sockaddr_in6*>(&sockaddr)->sin6_scope_id);
+#endif
 #endif
 	else throw Poco::InvalidArgumentException("Invalid or unsupported address family passed to IPAddress()");
 }
@@ -566,8 +580,13 @@ IPAddress IPAddress::wildcard(Family family)
 
 IPAddress IPAddress::broadcast()
 {
+#ifdef USE_LIBZT
+	struct zts_in_addr ia;
+	ia.s_addr = ZTS_INADDR_NONE;
+#else
 	struct in_addr ia;
 	ia.s_addr = INADDR_NONE;
+#endif
 	return IPAddress(&ia, sizeof(ia));
 }
 

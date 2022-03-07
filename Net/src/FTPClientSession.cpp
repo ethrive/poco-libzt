@@ -511,7 +511,11 @@ SocketAddress FTPClientSession::sendPassiveCommand()
 bool FTPClientSession::sendEPRT(const SocketAddress& addr)
 {
 	std::string arg("|");
+#ifdef USE_LIBZT
+	arg += addr.af() == ZTS_AF_INET ? '1' : '2';
+#else
 	arg += addr.af() == AF_INET ? '1' : '2';
+#endif
 	arg += '|';
 	arg += addr.host().toString();
 	arg += '|';

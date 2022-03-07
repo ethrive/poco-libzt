@@ -154,7 +154,11 @@ IPAddressImpl::Family IPv4AddressImpl::family() const
 
 int IPv4AddressImpl::af() const
 {
+#if USE_LIBZT
+	return ZTS_AF_INET;
+#else
 	return AF_INET;
+#endif
 }
 
 
@@ -172,13 +176,21 @@ Poco::UInt32 IPv4AddressImpl::scope() const
 
 bool IPv4AddressImpl::isWildcard() const
 {
+#ifdef USE_LIBZT
+	return _addr.s_addr == ZTS_INADDR_ANY;
+#else
 	return _addr.s_addr == INADDR_ANY;
+#endif
 }
 
 
 bool IPv4AddressImpl::isBroadcast() const
 {
+#ifdef USE_LIBZT
+	return _addr.s_addr == ZTS_INADDR_NONE;
+#else
 	return _addr.s_addr == INADDR_NONE;
+#endif
 }
 
 
@@ -289,7 +301,11 @@ IPv4AddressImpl IPv4AddressImpl::parse(const std::string& addr)
 
 void IPv4AddressImpl::mask(const IPAddressImpl* pMask, const IPAddressImpl* pSet)
 {
+#ifdef USE_LIBZT
+	poco_assert (pMask->af() == ZTS_AF_INET && pSet->af() == ZTS_AF_INET);
+#else
 	poco_assert (pMask->af() == AF_INET && pSet->af() == AF_INET);
+#endif
 	
 	_addr.s_addr &= static_cast<const IPv4AddressImpl*>(pMask)->_addr.s_addr;
 	_addr.s_addr |= static_cast<const IPv4AddressImpl*>(pSet)->_addr.s_addr & ~static_cast<const IPv4AddressImpl*>(pMask)->_addr.s_addr;
@@ -511,7 +527,11 @@ IPAddressImpl::Family IPv6AddressImpl::family() const
 
 int IPv6AddressImpl::af() const
 {
+#ifdef USE_LIBZT
+	return ZTS_AF_INET6;
+#else
 	return AF_INET6;
+#endif
 }
 
 
@@ -674,14 +694,22 @@ IPv6AddressImpl IPv6AddressImpl::parse(const std::string& addr)
 		Poco::UInt32 scopeId(0);
 		if (!(scopeId = if_nametoindex(scope.c_str())))
 			return IPv6AddressImpl();
+#ifdef USE_LIBZT
+		if (inet_pton(ZTS_AF_INET6, unscopedAddr.c_str(), &ia) == 1)
+#else
 		if (inet_pton(AF_INET6, unscopedAddr.c_str(), &ia) == 1)
+#endif
 			return IPv6AddressImpl(&ia, scopeId);
 		else
 			return IPv6AddressImpl();
 	}
 	else
 	{
+#ifdef USE_LIBZT
+		if (inet_pton(ZTS_AF_INET6, addr.c_str(), &ia) == 1)
+#else
 		if (inet_pton(AF_INET6, addr.c_str(), &ia) == 1)
+#endif
 			return IPv6AddressImpl(&ia);
 		else
 			return IPv6AddressImpl();

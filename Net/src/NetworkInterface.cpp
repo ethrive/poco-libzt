@@ -1419,14 +1419,21 @@ NetworkInterface::Map NetworkInterface::map(bool ipOnly, bool upOnly)
 				break;
 			}
 #endif
+#ifdef USE_LIBZT
+			case ZTS_AF_INET:
+#else
 			case AF_INET:
+#endif
 				ifIndex = if_nametoindex(currIface->ifa_name);
 				ifIt = result.find(ifIndex);
 				intf = NetworkInterface(ifIndex);
 				setInterfaceParams(currIface, intf.impl());
 				if ((ifIt == result.end()) && ((upOnly && intf.isUp()) || !upOnly))
 					ifIt = result.insert(Map::value_type(ifIndex, intf)).first;
-
+#ifdef USE_LIBZT
+				assert(false);
+				// address = IPAddress(*(currIface->ifa_addr));
+#else
 				address = IPAddress(*(currIface->ifa_addr));
 
 				if (( currIface->ifa_flags & IFF_LOOPBACK ) == 0 && currIface->ifa_netmask)
@@ -1439,30 +1446,50 @@ NetworkInterface::Map NetworkInterface::map(bool ipOnly, bool upOnly)
 				else
 					broadcastAddress = IPAddress();
 				break;
+#endif
 #if defined(POCO_HAVE_IPv6)
+#ifdef USE_LIBZT
+			case ZTS_AF_INET6:
+#else
 			case AF_INET6:
+#endif
 				ifIndex = if_nametoindex(currIface->ifa_name);
 				ifIt = result.find(ifIndex);
 				intf = NetworkInterface(ifIndex);
 				setInterfaceParams(currIface, intf.impl());
 				if ((ifIt == result.end()) && ((upOnly && intf.isUp()) || !upOnly))
 					ifIt = result.insert(Map::value_type(ifIndex, intf)).first;
-
+#ifdef USE_LIBZT
+				address = IPAddress(&reinterpret_cast<const struct zts_sockaddr_in6*>(currIface->ifa_addr)->sin6_addr,
+#else
 				address = IPAddress(&reinterpret_cast<const struct sockaddr_in6*>(currIface->ifa_addr)->sin6_addr,
+#endif
 					sizeof(struct in6_addr), ifIndex);
+#ifdef USE_LIBZT
+				assert(false);
+				// subnetMask = IPAddress(*(currIface->ifa_netmask));
+#else
 				subnetMask = IPAddress(*(currIface->ifa_netmask));
+#endif
 				broadcastAddress = IPAddress();
 				break;
 #endif
 			default:
 				continue;
 			}
-
+#ifdef USE_LIBZT
+			if (family == ZTS_AF_INET
+#ifdef POCO_HAVE_IPv6
+			|| family == ZTS_AF_INET6
+			)
+#endif
+#else
 			if (family == AF_INET
 #ifdef POCO_HAVE_IPv6
 			|| family == AF_INET6
+			 )
 #endif
-			)
+#endif
 			{
 				if ((upOnly && intf.isUp()) || !upOnly)
 				{

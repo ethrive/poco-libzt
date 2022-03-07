@@ -301,7 +301,11 @@ public:
 			_pollfds.reserve(_pollfds.size() + _addMap.size());
 			for (auto it = _addMap.begin(); it != _addMap.end(); ++it)
 			{
+#ifdef USE_LIBZT
+				zts_pollfd pfd;
+#else
 				pollfd pfd;
+#endif
 				pfd.fd = it->first;
 				pfd.events = 0;
 				pfd.revents = 0;
@@ -327,7 +331,11 @@ public:
 				WSASetLastError(WSAEINTR);
 			}
 #else
+#ifdef USE_LIBZT
+			rc = zts_bsd_poll(&_pollfds[0], _pollfds.size(), remainingTime.totalMilliseconds());
+#else
 			rc = ::poll(&_pollfds[0], _pollfds.size(), remainingTime.totalMilliseconds());
+#endif
 #endif
 			if (rc < 0 && SocketImpl::lastError() == POCO_EINTR)
 			{
@@ -352,19 +360,31 @@ public:
 					std::map<poco_socket_t, Socket>::const_iterator its = _socketMap.find(it->fd);
 					if (its != _socketMap.end())
 					{
+#ifdef USE_LIBZT
+						if ((it->revents & ZTS_POLLIN)
+#else
 						if ((it->revents & POLLIN)
+#endif
 #ifdef _WIN32
 						|| (it->revents & POLLHUP)
 #endif
 							)
 							result[its->second] |= PollSet::POLL_READ;
+#ifdef USE_LIBZT
+						if ((it->revents & ZTS_POLLOUT)
+#else
 						if ((it->revents & POLLOUT)
+#endif
 #ifdef _WIN32
 							&& (_wantPOLLOUT.find(it->fd) != _wantPOLLOUT.end())
 #endif
 							)
 							result[its->second] |= PollSet::POLL_WRITE;
+#ifdef USE_LIBZT
+						if (it->revents & ZTS_POLLERR)
+#else
 						if (it->revents & POLLERR)
+#endif
 							result[its->second] |= PollSet::POLL_ERROR;
 					}
 					it->revents = 0;
@@ -408,11 +428,19 @@ private:
 
 	void setMode(poco_socket_t fd, short& target, int mode)
 	{
+#ifdef USE_LIBZT
+		if (mode & PollSet::POLL_READ)
+			target |= ZTS_POLLIN;
+
+		if (mode & PollSet::POLL_WRITE)
+			target |= ZTS_POLLOUT;
+#else
 		if (mode & PollSet::POLL_READ)
 			target |= POLLIN;
 
 		if (mode & PollSet::POLL_WRITE)
 			target |= POLLOUT;
+#endif
 	}
 
 #endif
@@ -424,7 +452,11 @@ private:
 #endif
 	std::map<poco_socket_t, int>    _addMap;
 	std::set<poco_socket_t>         _removeSet;
+#ifdef USE_LIBZT
+	std::vector<zts_pollfd>         _pollfds;
+#else
 	std::vector<pollfd>             _pollfds;
+#endif
 };
 
 

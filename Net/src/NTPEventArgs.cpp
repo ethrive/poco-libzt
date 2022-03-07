@@ -39,7 +39,7 @@ NTPEventArgs::~NTPEventArgs()
 {
 }
 
-
+#ifndef USE_LIBZT
 std::string NTPEventArgs::hostName() const
 {
 	try
@@ -60,6 +60,7 @@ std::string NTPEventArgs::hostName() const
 	}
 	return _address.host().toString();
 }
+#endif
 
 
 std::string NTPEventArgs::hostAddress() const

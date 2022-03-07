@@ -45,7 +45,7 @@ ICMPEventArgs::~ICMPEventArgs()
 {
 }
 
-
+#ifndef USE_LIBZT
 std::string ICMPEventArgs::hostName() const
 {
 	try
@@ -66,6 +66,7 @@ std::string ICMPEventArgs::hostName() const
 	}
 	return _address.host().toString();
 }
+#endif
 
 
 std::string ICMPEventArgs::hostAddress() const

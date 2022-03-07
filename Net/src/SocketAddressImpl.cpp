@@ -46,12 +46,19 @@ SocketAddressImpl::~SocketAddressImpl()
 IPv4SocketAddressImpl::IPv4SocketAddressImpl()
 {
 	std::memset(&_addr, 0, sizeof(_addr));
+#ifdef USE_LIBZT
+	_addr.sin_family = ZTS_AF_INET;
+#else
 	_addr.sin_family = AF_INET;
+#endif
 	poco_set_sin_len(&_addr);
 }
 
-
+#if USE_LIBZT
+IPv4SocketAddressImpl::IPv4SocketAddressImpl(const struct zts_sockaddr_in* addr)
+#else
 IPv4SocketAddressImpl::IPv4SocketAddressImpl(const struct sockaddr_in* addr)
+#endif
 {
 	std::memcpy(&_addr, addr, sizeof(_addr));
 }
@@ -60,7 +67,11 @@ IPv4SocketAddressImpl::IPv4SocketAddressImpl(const struct sockaddr_in* addr)
 IPv4SocketAddressImpl::IPv4SocketAddressImpl(const void* addr, UInt16 port)
 {
 	std::memset(&_addr, 0, sizeof(_addr));
+#if USE_LIBZT
+	_addr.sin_family = ZTS_AF_INET;
+#else
 	_addr.sin_family = AF_INET;
+#endif
 	poco_set_sin_len(&_addr);
 	std::memcpy(&_addr.sin_addr, addr, sizeof(_addr.sin_addr));
 	_addr.sin_port = port;
@@ -84,8 +95,11 @@ std::string IPv4SocketAddressImpl::toString() const
 // IPv6SocketAddressImpl
 //
 
-
+#if USE_LIBZT
+IPv6SocketAddressImpl::IPv6SocketAddressImpl(const struct zts_sockaddr_in6* addr)
+#else
 IPv6SocketAddressImpl::IPv6SocketAddressImpl(const struct sockaddr_in6* addr)
+#endif
 {
 	std::memcpy(&_addr, addr, sizeof(_addr));
 }
@@ -94,7 +108,11 @@ IPv6SocketAddressImpl::IPv6SocketAddressImpl(const struct sockaddr_in6* addr)
 IPv6SocketAddressImpl::IPv6SocketAddressImpl(const void* addr, UInt16 port)
 {
 	std::memset(&_addr, 0, sizeof(_addr));
+#ifdef USE_LIBZT
+	_addr.sin6_family = ZTS_AF_INET6;
+#else
 	_addr.sin6_family = AF_INET6;
+#endif
 	poco_set_sin6_len(&_addr);
 	std::memcpy(&_addr.sin6_addr, addr, sizeof(_addr.sin6_addr));
 	_addr.sin6_port = port;
@@ -104,7 +122,11 @@ IPv6SocketAddressImpl::IPv6SocketAddressImpl(const void* addr, UInt16 port)
 IPv6SocketAddressImpl::IPv6SocketAddressImpl(const void* addr, UInt16 port, UInt32 scope)
 {
 	std::memset(&_addr, 0, sizeof(_addr));
+#ifdef USE_LIBZT
+	_addr.sin6_family = ZTS_AF_INET6;
+#else
 	_addr.sin6_family = AF_INET6;
+#endif
 	poco_set_sin6_len(&_addr);
 	std::memcpy(&_addr.sin6_addr, addr, sizeof(_addr.sin6_addr));
 	_addr.sin6_port = port;

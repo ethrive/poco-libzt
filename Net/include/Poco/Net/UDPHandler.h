@@ -269,7 +269,11 @@ public:
 	static SocketAddress address(char* buf)
 	{
 		poco_socklen_t* len = reinterpret_cast<poco_socklen_t*>(buf + sizeof(MsgSizeT));
+#ifdef USE_LIBZT
+		struct zts_sockaddr* pSA = reinterpret_cast<struct zts_sockaddr*>(buf + sizeof(MsgSizeT) + sizeof(poco_socklen_t));
+#else
 		struct sockaddr* pSA = reinterpret_cast<struct sockaddr*>(buf + sizeof(MsgSizeT) + sizeof(poco_socklen_t));
+#endif
 		return SocketAddress(pSA, *len);
 	}
 

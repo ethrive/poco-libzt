@@ -25,17 +25,29 @@ namespace Net {
 
 RawSocketImpl::RawSocketImpl()
 {
+#ifdef USE_LIBZT
+	init(ZTS_AF_INET);
+#else
 	init(AF_INET);
+#endif
 }
 
 
 RawSocketImpl::RawSocketImpl(SocketAddress::Family family, int proto)
 {
 	if (family == SocketAddress::IPv4)
+#ifdef USE_LIBZT
+		init2(ZTS_AF_INET, proto);
+#else
 		init2(AF_INET, proto);
+#endif
 #if defined(POCO_HAVE_IPv6)
 	else if (family == SocketAddress::IPv6)
+#ifdef USE_LIBZT
+		init2(ZTS_AF_INET6, proto);
+#else
 		init2(AF_INET6, proto);
+#endif
 #endif
 	else throw InvalidArgumentException("Invalid or unsupported address family passed to RawSocketImpl");
 

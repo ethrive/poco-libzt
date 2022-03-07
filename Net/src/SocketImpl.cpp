@@ -109,18 +109,36 @@ SocketImpl* SocketImpl::acceptConnection(SocketAddress& clientAddr)
 {
 	if (_sockfd == POCO_INVALID_SOCKET) throw InvalidSocketException();
 
+#if USE_LIBZT
+	zts_sockaddr_storage buffer;
+	struct zts_sockaddr* pSA = reinterpret_cast<struct zts_sockaddr*>(&buffer);
+	poco_socklen_t saLen = sizeof(struct zts_sockaddr);
+#else
 	sockaddr_storage buffer;
 	struct sockaddr* pSA = reinterpret_cast<struct sockaddr*>(&buffer);
 	poco_socklen_t saLen = sizeof(buffer);
+#endif
 	poco_socket_t sd;
+#if USE_LIBZT
+	unsigned short port = 0;
+	char remote_ipstr[ZTS_INET6_ADDRSTRLEN] = { 0 };
+#endif
 	do
 	{
-		sd = ::accept(_sockfd, pSA, &saLen);
+#if USE_LIBZT
+	sd = zts_accept(_sockfd, remote_ipstr,ZTS_INET6_ADDRSTRLEN, &port);
+#else
+	sd = ::accept(_sockfd, pSA, &saLen);
+#endif
 	}
 	while (sd == POCO_INVALID_SOCKET && lastError() == POCO_EINTR);
 	if (sd != POCO_INVALID_SOCKET)
 	{
+#if USE_LIBZT
+		clientAddr = SocketAddress(remote_ipstr, port);
+#else
 		clientAddr = SocketAddress(pSA, saLen);
+#endif
 		return new StreamSocketImpl(sd);
 	}
 	error(); // will throw
@@ -140,7 +158,11 @@ void SocketImpl::connect(const SocketAddress& address)
 #if defined(POCO_VXWORKS)
 		rc = ::connect(_sockfd, (sockaddr*) address.addr(), address.length());
 #else
+#ifdef USE_LIBZT
+		rc = zts_bsd_connect(_sockfd, address.addr(), address.length());
+#else
 		rc = ::connect(_sockfd, address.addr(), address.length());
+#endif
 #endif
 	}
 	while (rc != 0 && lastError() == POCO_EINTR);
@@ -164,7 +186,11 @@ void SocketImpl::connect(const SocketAddress& address, const Poco::Timespan& tim
 #if defined(POCO_VXWORKS)
 		int rc = ::connect(_sockfd, (sockaddr*) address.addr(), address.length());
 #else
+#ifdef USE_LIBZT
+		int rc = zts_bsd_connect(_sockfd, address.addr(), address.length());
+#else
 		int rc = ::connect(_sockfd, address.addr(), address.length());
+#endif
 #endif
 		if (rc != 0)
 		{
@@ -196,7 +222,11 @@ void SocketImpl::connectNB(const SocketAddress& address)
 #if defined(POCO_VXWORKS)
 	int rc = ::connect(_sockfd, (sockaddr*) address.addr(), address.length());
 #else
-	int rc = ::connect(_sockfd, address.addr(), address.length());
+#ifdef USE_LIBZT
+        int rc = zts_bsd_connect(_sockfd, address.addr(), address.length());
+#else
+        int rc = ::connect(_sockfd, address.addr(), address.length());
+#endif
 #endif
 	if (rc != 0)
 	{
@@ -226,7 +256,11 @@ void SocketImpl::bind(const SocketAddress& address, bool reuseAddress, bool reus
 #if defined(POCO_VXWORKS)
 	int rc = ::bind(_sockfd, (sockaddr*) address.addr(), address.length());
 #else
+#ifdef USE_LIBZT
+	int rc = zts_bsd_bind(_sockfd, address.addr(), address.length());
+#else
 	int rc = ::bind(_sockfd, address.addr(), address.length());
+#endif
 #endif
 	if (rc != 0) error(address.toString());
 }
@@ -249,7 +283,11 @@ void SocketImpl::bind6(const SocketAddress& address, bool reuseAddress, bool reu
 		init(address.af());
 	}
 #ifdef IPV6_V6ONLY
+#ifdef USE_LIBZT
+	setOption(ZTS_IPPROTO_IPV6, ZTS_IPV6_V6ONLY, ipV6Only ? 1 : 0);
+#else
 	setOption(IPPROTO_IPV6, IPV6_V6ONLY, ipV6Only ? 1 : 0);
+#endif
 #else
 	if (ipV6Only) throw Poco::NotImplementedException("IPV6_V6ONLY not defined.");
 #endif
@@ -257,7 +295,11 @@ void SocketImpl::bind6(const SocketAddress& address, bool reuseAddress, bool reu
 		setReuseAddress(true);
 	if (reusePort)
 		setReusePort(true);
+#ifdef USE_LIBZT
+	int rc = zts_bsd_bind(_sockfd, address.addr(), address.length());
+#else
 	int rc = ::bind(_sockfd, address.addr(), address.length());
+#endif
 	if (rc != 0) error(address.toString());
 #else
 	throw Poco::NotImplementedException("No IPv6 support available");
@@ -268,8 +310,11 @@ void SocketImpl::bind6(const SocketAddress& address, bool reuseAddress, bool reu
 void SocketImpl::listen(int backlog)
 {
 	if (_sockfd == POCO_INVALID_SOCKET) throw InvalidSocketException();
-
+#ifdef USE_LIBZT
+	int rc = zts_bsd_listen(_sockfd, backlog);
+#else
 	int rc = ::listen(_sockfd, backlog);
+#endif
 	if (rc != 0) error();
 }
 
@@ -287,8 +332,11 @@ void SocketImpl::close()
 void SocketImpl::shutdownReceive()
 {
 	if (_sockfd == POCO_INVALID_SOCKET) throw InvalidSocketException();
-
+#ifdef USE_LIBZT
+	int rc = zts_bsd_shutdown(_sockfd, 0);
+#else
 	int rc = ::shutdown(_sockfd, 0);
+#endif
 	if (rc != 0) error();
 }
 
@@ -296,8 +344,11 @@ void SocketImpl::shutdownReceive()
 void SocketImpl::shutdownSend()
 {
 	if (_sockfd == POCO_INVALID_SOCKET) throw InvalidSocketException();
-
+#ifdef USE_LIBZT
+	int rc = zts_bsd_shutdown(_sockfd, 1);
+#else
 	int rc = ::shutdown(_sockfd, 1);
+#endif
 	if (rc != 0) error();
 }
 
@@ -306,7 +357,11 @@ void SocketImpl::shutdown()
 {
 	if (_sockfd == POCO_INVALID_SOCKET) throw InvalidSocketException();
 
+#ifdef USE_LIBZT
+	int rc = zts_bsd_shutdown(_sockfd, 2);
+#else
 	int rc = ::shutdown(_sockfd, 2);
+#endif
 	if (rc != 0) error();
 }
 
@@ -333,7 +388,11 @@ int SocketImpl::sendBytes(const void* buffer, int length, int flags)
 	do
 	{
 		if (_sockfd == POCO_INVALID_SOCKET) throw InvalidSocketException();
+#if USE_LIBZT
+		rc = zts_bsd_send(_sockfd, reinterpret_cast<const char*>(buffer), length, flags);
+#else
 		rc = ::send(_sockfd, reinterpret_cast<const char*>(buffer), length, flags);
+#endif
 	}
 	while (_blocking && rc < 0 && lastError() == POCO_EINTR);
 	if (rc < 0) error();
@@ -357,7 +416,11 @@ int SocketImpl::sendBytes(const SocketBufVec& buffers, int flags)
 		if (rc == SOCKET_ERROR) error();
 		rc = sent;
 #elif defined(POCO_OS_FAMILY_UNIX)
+#ifdef USE_LIBZT
+		rc = zts_bsd_writev(_sockfd, reinterpret_cast<const zts_iovec *>(&buffers[0]), static_cast<int>(buffers.size()));
+#else
 		rc = writev(_sockfd, &buffers[0], static_cast<int>(buffers.size()));
+#endif
 #endif
 	}
 	while (_blocking && rc < 0 && lastError() == POCO_EINTR);
@@ -374,7 +437,11 @@ int SocketImpl::receiveBytes(void* buffer, int length, int flags)
 	do
 	{
 		if (_sockfd == POCO_INVALID_SOCKET) throw InvalidSocketException();
+#if USE_LIBZT
+		rc = zts_bsd_recv(_sockfd, reinterpret_cast<char*>(buffer), length, flags);
+#else
 		rc = ::recv(_sockfd, reinterpret_cast<char*>(buffer), length, flags);
+#endif
 	}
 	while (_blocking && rc < 0 && lastError() == POCO_EINTR);
 	if (rc < 0)
@@ -407,7 +474,11 @@ int SocketImpl::receiveBytes(SocketBufVec& buffers, int flags)
 		if (rc == SOCKET_ERROR) error();
 		rc = recvd;
 #elif defined(POCO_OS_FAMILY_UNIX)
+#if USE_LIBZT
+		rc = zts_bsd_readv(_sockfd, reinterpret_cast<const zts_iovec *>(&buffers[0]), static_cast<int>(buffers.size()));
+#else
 		rc = readv(_sockfd, &buffers[0], static_cast<int>(buffers.size()));
+#endif
 #endif
 	}
 	while (_blocking && rc < 0 && lastError() == POCO_EINTR);
@@ -436,7 +507,11 @@ int SocketImpl::receiveBytes(Poco::Buffer<char>& buffer, int flags, const Poco::
 		do
 		{
 			if (_sockfd == POCO_INVALID_SOCKET) throw InvalidSocketException();
+#if USE_LIBZT
+			rc = zts_bsd_recv(_sockfd, buffer.begin(), static_cast<int>(buffer.size()), flags);
+#else
 			rc = ::recv(_sockfd, buffer.begin(), static_cast<int>(buffer.size()), flags);
+#endif
 		}
 		while (_blocking && rc < 0 && lastError() == POCO_EINTR);
 		if (rc < 0)
@@ -464,7 +539,11 @@ int SocketImpl::sendTo(const void* buffer, int length, const SocketAddress& addr
 #if defined(POCO_VXWORKS)
 		rc = ::sendto(_sockfd, (char*) buffer, length, flags, (sockaddr*) address.addr(), address.length());
 #else
+#if USE_LIBZT
+		rc = zts_bsd_sendto(_sockfd, reinterpret_cast<const char*>(buffer), length, flags, address.addr(), address.length());
+#else
 		rc = ::sendto(_sockfd, reinterpret_cast<const char*>(buffer), length, flags, address.addr(), address.length());
+#endif
 #endif
 	}
 	while (_blocking && rc < 0 && lastError() == POCO_EINTR);
@@ -488,15 +567,25 @@ int SocketImpl::sendTo(const SocketBufVec& buffers, const SocketAddress& address
 		if (rc == SOCKET_ERROR) error();
 		rc = sent;
 #elif defined(POCO_OS_FAMILY_UNIX)
+#if USE_LIBZT
+		struct zts_msghdr msgHdr;
+		msgHdr.msg_name = const_cast<zts_sockaddr*>(address.addr());
+		msgHdr.msg_iov = (zts_iovec *)&buffers[0];
+#else
 		struct msghdr msgHdr;
 		msgHdr.msg_name = const_cast<sockaddr*>(address.addr());
-		msgHdr.msg_namelen = address.length();
 		msgHdr.msg_iov = const_cast<iovec*>(&buffers[0]);
+#endif
+		msgHdr.msg_namelen = address.length();
 		msgHdr.msg_iovlen = buffers.size();
 		msgHdr.msg_control = 0;
 		msgHdr.msg_controllen = 0;
 		msgHdr.msg_flags = flags;
+#if USE_LIBZT
+		rc = zts_bsd_sendmsg(_sockfd, &msgHdr, flags);
+#else
 		rc = sendmsg(_sockfd, &msgHdr, flags);
+#endif
 #endif
 	}
 	while (_blocking && rc < 0 && lastError() == POCO_EINTR);
@@ -507,10 +596,17 @@ int SocketImpl::sendTo(const SocketBufVec& buffers, const SocketAddress& address
 
 int SocketImpl::receiveFrom(void* buffer, int length, SocketAddress& address, int flags)
 {
+#if USE_LIBZT
+	zts_sockaddr_storage abuffer;
+	struct zts_sockaddr* pSA = reinterpret_cast<struct zts_sockaddr*>(&abuffer);
+	poco_socklen_t saLen = sizeof(abuffer);
+	poco_socklen_t* pSALen = &saLen;
+#else
 	sockaddr_storage abuffer;
 	struct sockaddr* pSA = reinterpret_cast<struct sockaddr*>(&abuffer);
 	poco_socklen_t saLen = sizeof(abuffer);
 	poco_socklen_t* pSALen = &saLen;
+#endif
 	int rc = receiveFrom(buffer, length, &pSA, &pSALen, flags);
 	if (rc >= 0)
 	{
@@ -520,14 +616,22 @@ int SocketImpl::receiveFrom(void* buffer, int length, SocketAddress& address, in
 }
 
 
+#if USE_LIBZT
+int SocketImpl::receiveFrom(void* buffer, int length, struct zts_sockaddr** ppSA, poco_socklen_t** ppSALen, int flags)
+#else
 int SocketImpl::receiveFrom(void* buffer, int length, struct sockaddr** ppSA, poco_socklen_t** ppSALen, int flags)
+#endif
 {
 	checkBrokenTimeout(SELECT_READ);
 	int rc;
 	do
 	{
 		if (_sockfd == POCO_INVALID_SOCKET) throw InvalidSocketException();
-		rc = ::recvfrom(_sockfd, reinterpret_cast<char*>(buffer), length, flags, *ppSA, *ppSALen);
+#if USE_LIBZT
+		rc = zts_bsd_recvfrom(_sockfd, reinterpret_cast<char*>(buffer), length, flags, *ppSA, *ppSALen);
+#else
+		rc = recvfrom(_sockfd, reinterpret_cast<char*>(buffer), length, flags, *ppSA, *ppSALen);
+#endif
 	}
 	while (_blocking && rc < 0 && lastError() == POCO_EINTR);
 	if (rc < 0)
@@ -546,11 +650,19 @@ int SocketImpl::receiveFrom(void* buffer, int length, struct sockaddr** ppSA, po
 
 int SocketImpl::receiveFrom(SocketBufVec& buffers, SocketAddress& address, int flags)
 {
+#if USE_LIBZT
+	zts_sockaddr_storage abuffer;
+	struct zts_sockaddr* pSA = reinterpret_cast<struct zts_sockaddr*>(&abuffer);
+	poco_socklen_t saLen = sizeof(abuffer);
+	poco_socklen_t* pSALen = &saLen;
+	int rc = receiveFrom(buffers, &pSA, &pSALen, flags);
+#else
 	sockaddr_storage abuffer;
 	struct sockaddr* pSA = reinterpret_cast<struct sockaddr*>(&abuffer);
 	poco_socklen_t saLen = sizeof(abuffer);
 	poco_socklen_t* pSALen = &saLen;
 	int rc = receiveFrom(buffers, &pSA, &pSALen, flags);
+#endif
 	if(rc >= 0)
 	{
 		address = SocketAddress(pSA, saLen);
@@ -559,7 +671,11 @@ int SocketImpl::receiveFrom(SocketBufVec& buffers, SocketAddress& address, int f
 }
 
 
+#if USE_LIBZT
+int SocketImpl::receiveFrom(SocketBufVec& buffers, struct zts_sockaddr** pSA, poco_socklen_t** ppSALen, int flags)
+#else
 int SocketImpl::receiveFrom(SocketBufVec& buffers, struct sockaddr** pSA, poco_socklen_t** ppSALen, int flags)
+#endif
 {
 	checkBrokenTimeout(SELECT_READ);
 	int rc = 0;
@@ -574,15 +690,24 @@ int SocketImpl::receiveFrom(SocketBufVec& buffers, struct sockaddr** pSA, poco_s
 		if (rc == SOCKET_ERROR) error();
 		rc = recvd;
 #elif defined(POCO_OS_FAMILY_UNIX)
+#if USE_LIBZT
+		struct zts_msghdr msgHdr;
+		msgHdr.msg_iov = reinterpret_cast<zts_iovec *>(&buffers[0]);
+#else
 		struct msghdr msgHdr;
+		msgHdr.msg_iov = &buffers[0];
+#endif
 		msgHdr.msg_name = *pSA;
 		msgHdr.msg_namelen = **ppSALen;
-		msgHdr.msg_iov = &buffers[0];
 		msgHdr.msg_iovlen = buffers.size();
 		msgHdr.msg_control = 0;
 		msgHdr.msg_controllen = 0;
 		msgHdr.msg_flags = flags;
+#if USE_LIBZT
+		rc = zts_bsd_recvmsg(_sockfd, &msgHdr, flags);
+#else
 		rc = recvmsg(_sockfd, &msgHdr, flags);
+#endif
 		if (rc >= 0) **ppSALen = msgHdr.msg_namelen;
 #endif
 	}
@@ -604,8 +729,11 @@ int SocketImpl::receiveFrom(SocketBufVec& buffers, struct sockaddr** pSA, poco_s
 void SocketImpl::sendUrgent(unsigned char data)
 {
 	if (_sockfd == POCO_INVALID_SOCKET) throw InvalidSocketException();
-
+#if USE_LIBZT
+	int rc = zts_bsd_send(_sockfd, reinterpret_cast<const char*>(&data), sizeof(data), ZTS_MSG_OOB);
+#else
 	int rc = ::send(_sockfd, reinterpret_cast<const char*>(&data), sizeof(data), MSG_OOB);
+#endif
 	if (rc < 0) error();
 }
 
@@ -613,7 +741,11 @@ void SocketImpl::sendUrgent(unsigned char data)
 int SocketImpl::available()
 {
 	int result = 0;
+#if USE_LIBZT
+	ioctl(ZTS_FIONREAD, result);
+#else
 	ioctl(FIONREAD, result);
+#endif
 	return result;
 }
 
@@ -680,12 +812,22 @@ bool SocketImpl::poll(const Poco::Timespan& timeout, int mode)
 
 #elif defined(POCO_HAVE_FD_POLL)
 
+#if USE_LIBZT
+	zts_pollfd pollBuf;
+	memset(&pollBuf, 0, sizeof(zts_pollfd));
+#else
 	pollfd pollBuf;
-
 	memset(&pollBuf, 0, sizeof(pollfd));
+#endif
+
 	pollBuf.fd = _sockfd;
+#if USE_LIBZT
+	if (mode & SELECT_READ) pollBuf.events |= ZTS_POLLIN;
+	if (mode & SELECT_WRITE) pollBuf.events |= ZTS_POLLOUT;
+#else
 	if (mode & SELECT_READ) pollBuf.events |= POLLIN;
 	if (mode & SELECT_WRITE) pollBuf.events |= POLLOUT;
+#endif
 
 	Poco::Timespan remainingTime(timeout);
 	int rc;
@@ -695,7 +837,11 @@ bool SocketImpl::poll(const Poco::Timespan& timeout, int mode)
 #ifdef _WIN32
 		rc = WSAPoll(&pollBuf, 1, static_cast<INT>(remainingTime.totalMilliseconds()));
 #else
+#if USE_LIBZT
+		rc = zts_bsd_poll(&pollBuf, 1, remainingTime.totalMilliseconds());
+#else
 		rc = ::poll(&pollBuf, 1, remainingTime.totalMilliseconds());
+#endif
 #endif
 		if (rc < 0 && lastError() == POCO_EINTR)
 		{
@@ -761,28 +907,44 @@ bool SocketImpl::poll(const Poco::Timespan& timeout, int mode)
 
 void SocketImpl::setSendBufferSize(int size)
 {
+#if USE_LIBZT
+	setOption(ZTS_SOL_SOCKET, ZTS_SO_SNDBUF, size);
+#else
 	setOption(SOL_SOCKET, SO_SNDBUF, size);
+#endif
 }
 
 
 int SocketImpl::getSendBufferSize()
 {
 	int result;
+#if USE_LIBZT
+	getOption(ZTS_SOL_SOCKET, ZTS_SO_SNDBUF, result);
+#else
 	getOption(SOL_SOCKET, SO_SNDBUF, result);
+#endif
 	return result;
 }
 
 
 void SocketImpl::setReceiveBufferSize(int size)
 {
+#if USE_LIBZT
+	setOption(ZTS_SOL_SOCKET, ZTS_SO_RCVBUF, size);
+#else
 	setOption(SOL_SOCKET, SO_RCVBUF, size);
+#endif
 }
 
 
 int SocketImpl::getReceiveBufferSize()
 {
 	int result;
+#if USE_LIBZT
+	getOption(ZTS_SOL_SOCKET, ZTS_SO_RCVBUF, result);
+#else
 	getOption(SOL_SOCKET, SO_RCVBUF, result);
+#endif
 	return result;
 }
 
@@ -793,7 +955,11 @@ void SocketImpl::setSendTimeout(const Poco::Timespan& timeout)
 	int value = (int) timeout.totalMilliseconds();
 	setOption(SOL_SOCKET, SO_SNDTIMEO, value);
 #elif !defined(POCO_BROKEN_TIMEOUTS)
+#if USE_LIBZT
+	setOption(ZTS_SOL_SOCKET, ZTS_SO_SNDTIMEO, timeout);
+#else
 	setOption(SOL_SOCKET, SO_SNDTIMEO, timeout);
+#endif
 #endif
 	if (_isBrokenTimeout)
 		_sndTimeout = timeout;
@@ -808,7 +974,11 @@ Poco::Timespan SocketImpl::getSendTimeout()
 	getOption(SOL_SOCKET, SO_SNDTIMEO, value);
 	result = Timespan::TimeDiff(value)*1000;
 #elif !defined(POCO_BROKEN_TIMEOUTS)
+#if USE_LIBZT
+	getOption(ZTS_SOL_SOCKET, ZTS_SO_SNDTIMEO, result);
+#else
 	getOption(SOL_SOCKET, SO_SNDTIMEO, result);
+#endif
 #endif
 	if (_isBrokenTimeout)
 		result = _sndTimeout;
@@ -823,7 +993,11 @@ void SocketImpl::setReceiveTimeout(const Poco::Timespan& timeout)
 	int value = (int) timeout.totalMilliseconds();
 	setOption(SOL_SOCKET, SO_RCVTIMEO, value);
 #else
+#if USE_LIBZT
+	setOption(ZTS_SOL_SOCKET, ZTS_SO_RCVTIMEO, timeout);
+#else
 	setOption(SOL_SOCKET, SO_RCVTIMEO, timeout);
+#endif
 #endif
 #endif
 	if (_isBrokenTimeout)
@@ -839,7 +1013,11 @@ Poco::Timespan SocketImpl::getReceiveTimeout()
 	getOption(SOL_SOCKET, SO_RCVTIMEO, value);
 	result = Timespan::TimeDiff(value)*1000;
 #elif !defined(POCO_BROKEN_TIMEOUTS)
+#if USE_LIBZT
+	getOption(ZTS_SOL_SOCKET, ZTS_SO_RCVTIMEO, result);
+#else
 	getOption(SOL_SOCKET, SO_RCVTIMEO, result);
+#endif
 #endif
 	if (_isBrokenTimeout)
 		result = _recvTimeout;
@@ -851,10 +1029,17 @@ SocketAddress SocketImpl::address()
 {
 	if (_sockfd == POCO_INVALID_SOCKET) throw InvalidSocketException();
 
+#if USE_LIBZT
+	zts_sockaddr_storage buffer;
+	struct zts_sockaddr* pSA = reinterpret_cast<struct zts_sockaddr*>(&buffer);
+	poco_socklen_t saLen = sizeof(buffer);
+	int rc = zts_bsd_getsockname(_sockfd, pSA, &saLen);
+#else
 	sockaddr_storage buffer;
 	struct sockaddr* pSA = reinterpret_cast<struct sockaddr*>(&buffer);
 	poco_socklen_t saLen = sizeof(buffer);
 	int rc = ::getsockname(_sockfd, pSA, &saLen);
+#endif
 	if (rc == 0)
 		return SocketAddress(pSA, saLen);
 	else
@@ -866,11 +1051,17 @@ SocketAddress SocketImpl::address()
 SocketAddress SocketImpl::peerAddress()
 {
 	if (_sockfd == POCO_INVALID_SOCKET) throw InvalidSocketException();
-
+#if USE_LIBZT
+	zts_sockaddr_storage buffer;
+	struct zts_sockaddr* pSA = reinterpret_cast<struct zts_sockaddr*>(&buffer);
+	poco_socklen_t saLen = sizeof(buffer);
+	int rc = zts_bsd_getpeername(_sockfd, pSA, &saLen);
+#else
 	sockaddr_storage buffer;
 	struct sockaddr* pSA = reinterpret_cast<struct sockaddr*>(&buffer);
 	poco_socklen_t saLen = sizeof(buffer);
 	int rc = ::getpeername(_sockfd, pSA, &saLen);
+#endif
 	if (rc == 0)
 		return SocketAddress(pSA, saLen);
 	else
@@ -920,7 +1111,11 @@ void SocketImpl::setRawOption(int level, int option, const void* value, poco_soc
 #if defined(POCO_VXWORKS)
 	int rc = ::setsockopt(_sockfd, level, option, (char*) value, length);
 #else
+#if USE_LIBZT
+	int rc = zts_bsd_setsockopt(_sockfd, level, option, value, length);
+#else
 	int rc = ::setsockopt(_sockfd, level, option, reinterpret_cast<const char*>(value), length);
+#endif
 #endif
 	if (rc == -1) error();
 }
@@ -968,26 +1163,45 @@ void SocketImpl::getOption(int level, int option, IPAddress& value)
 void SocketImpl::getRawOption(int level, int option, void* value, poco_socklen_t& length)
 {
 	if (_sockfd == POCO_INVALID_SOCKET) throw InvalidSocketException();
-
+#if USE_LIBZT
+	int rc = zts_bsd_getsockopt(_sockfd, level, option, reinterpret_cast<char*>(value), &length);
+#else
 	int rc = ::getsockopt(_sockfd, level, option, reinterpret_cast<char*>(value), &length);
+#endif
 	if (rc == -1) error();
 }
 
 
 void SocketImpl::setLinger(bool on, int seconds)
 {
+#if USE_LIBZT
+	struct zts_linger l;
+#else
 	struct linger l;
+#endif
 	l.l_onoff  = on ? 1 : 0;
 	l.l_linger = seconds;
+#if USE_LIBZT
+	setRawOption(ZTS_SOL_SOCKET, ZTS_SO_LINGER, &l, sizeof(l));
+#else
 	setRawOption(SOL_SOCKET, SO_LINGER, &l, sizeof(l));
+#endif
 }
 
 
 void SocketImpl::getLinger(bool& on, int& seconds)
 {
+#if USE_LIBZT
+	struct zts_linger l;
+#else
 	struct linger l;
+#endif
 	poco_socklen_t len = sizeof(l);
+#if USE_LIBZT
+	getRawOption(ZTS_SOL_SOCKET, ZTS_SO_LINGER, &l, len);
+#else
 	getRawOption(SOL_SOCKET, SO_LINGER, &l, len);
+#endif
 	on      = l.l_onoff != 0;
 	seconds = l.l_linger;
 }
@@ -996,14 +1210,22 @@ void SocketImpl::getLinger(bool& on, int& seconds)
 void SocketImpl::setNoDelay(bool flag)
 {
 	int value = flag ? 1 : 0;
+#if USE_LIBZT
+	setOption(ZTS_IPPROTO_TCP, ZTS_TCP_NODELAY, value);
+#else
 	setOption(IPPROTO_TCP, TCP_NODELAY, value);
+#endif
 }
 
 
 bool SocketImpl::getNoDelay()
 {
 	int value(0);
+#if USE_LIBZT
+	getOption(ZTS_IPPROTO_TCP, ZTS_TCP_NODELAY, value);
+#else
 	getOption(IPPROTO_TCP, TCP_NODELAY, value);
+#endif
 	return value != 0;
 }
 
@@ -1011,14 +1233,22 @@ bool SocketImpl::getNoDelay()
 void SocketImpl::setKeepAlive(bool flag)
 {
 	int value = flag ? 1 : 0;
+#if USE_LIBZT
+	setOption(ZTS_SOL_SOCKET, ZTS_SO_KEEPALIVE, value);
+#else
 	setOption(SOL_SOCKET, SO_KEEPALIVE, value);
+#endif
 }
 
 
 bool SocketImpl::getKeepAlive()
 {
 	int value(0);
+#if USE_LIBZT
+	getOption(ZTS_SOL_SOCKET, ZTS_SO_KEEPALIVE, value);
+#else
 	getOption(SOL_SOCKET, SO_KEEPALIVE, value);
+#endif
 	return value != 0;
 }
 
@@ -1026,14 +1256,22 @@ bool SocketImpl::getKeepAlive()
 void SocketImpl::setReuseAddress(bool flag)
 {
 	int value = flag ? 1 : 0;
+#if USE_LIBZT
+	setOption(ZTS_SOL_SOCKET, ZTS_SO_REUSEADDR, value);
+#else
 	setOption(SOL_SOCKET, SO_REUSEADDR, value);
+#endif
 }
 
 
 bool SocketImpl::getReuseAddress()
 {
 	int value(0);
+#if USE_LIBZT
+	getOption(ZTS_SOL_SOCKET, ZTS_SO_REUSEADDR, value);
+#else
 	getOption(SOL_SOCKET, SO_REUSEADDR, value);
+#endif
 	return value != 0;
 }
 
@@ -1044,7 +1282,11 @@ void SocketImpl::setReusePort(bool flag)
 	try
 	{
 		int value = flag ? 1 : 0;
+#if USE_LIBZT
+		setOption(ZTS_SOL_SOCKET, ZTS_SO_REUSEPORT, value);
+#else
 		setOption(SOL_SOCKET, SO_REUSEPORT, value);
+#endif
 	}
 	catch (IOException&)
 	{
@@ -1060,7 +1302,11 @@ bool SocketImpl::getReusePort()
 {
 #ifdef SO_REUSEPORT
 	int value(0);
+#if USE_LIBZT
+	getOption(ZTS_SOL_SOCKET, ZTS_SO_REUSEPORT, value);
+#else
 	getOption(SOL_SOCKET, SO_REUSEPORT, value);
+#endif
 	return value != 0;
 #else
 	return false;
@@ -1071,14 +1317,22 @@ bool SocketImpl::getReusePort()
 void SocketImpl::setOOBInline(bool flag)
 {
 	int value = flag ? 1 : 0;
+#if USE_LIBZT
+	setOption(ZTS_SOL_SOCKET, ZTS_SO_OOBINLINE, value);
+#else
 	setOption(SOL_SOCKET, SO_OOBINLINE, value);
+#endif
 }
 
 
 bool SocketImpl::getOOBInline()
 {
 	int value(0);
+#if USE_LIBZT
+	getOption(ZTS_SOL_SOCKET, ZTS_SO_OOBINLINE, value);
+#else
 	getOption(SOL_SOCKET, SO_OOBINLINE, value);
+#endif
 	return value != 0;
 }
 
@@ -1086,14 +1340,22 @@ bool SocketImpl::getOOBInline()
 void SocketImpl::setBroadcast(bool flag)
 {
 	int value = flag ? 1 : 0;
+#if USE_LIBZT
+	setOption(ZTS_SOL_SOCKET, ZTS_SO_BROADCAST, value);
+#else
 	setOption(SOL_SOCKET, SO_BROADCAST, value);
+#endif
 }
 
 
 bool SocketImpl::getBroadcast()
 {
 	int value(0);
+#if USE_LIBZT
+	getOption(ZTS_SOL_SOCKET, ZTS_SO_BROADCAST, value);
+#else
 	getOption(SOL_SOCKET, SO_BROADCAST, value);
+#endif
 	return value != 0;
 }
 
@@ -1104,10 +1366,17 @@ void SocketImpl::setBlocking(bool flag)
 	int arg = flag ? 0 : 1;
 	ioctl(FIONBIO, arg);
 #else
+#if USE_LIBZT
+	int arg = fcntl(ZTS_F_GETFL);
+	long flags = arg & ~ZTS_O_NONBLOCK;
+	if (!flag) flags |= ZTS_O_NONBLOCK;
+	(void) fcntl(ZTS_F_SETFL, flags);
+#else
 	int arg = fcntl(F_GETFL);
 	long flags = arg & ~O_NONBLOCK;
 	if (!flag) flags |= O_NONBLOCK;
 	(void) fcntl(F_SETFL, flags);
+#endif
 #endif
 	_blocking = flag;
 }
@@ -1116,14 +1385,22 @@ void SocketImpl::setBlocking(bool flag)
 int SocketImpl::socketError()
 {
 	int result(0);
+#if USE_LIBZT
+	getOption(ZTS_SOL_SOCKET, ZTS_SO_ERROR, result);
+#else
 	getOption(SOL_SOCKET, SO_ERROR, result);
+#endif
 	return result;
 }
 
 
 void SocketImpl::init(int af)
 {
+#if USE_LIBZT
+	initSocket(af, ZTS_SOCK_STREAM);
+#else
 	initSocket(af, SOCK_STREAM);
+#endif
 }
 
 
@@ -1131,7 +1408,11 @@ void SocketImpl::initSocket(int af, int type, int proto)
 {
 	poco_assert (_sockfd == POCO_INVALID_SOCKET);
 
+#if USE_LIBZT
+	_sockfd = zts_bsd_socket(af, type, proto);
+#else
 	_sockfd = ::socket(af, type, proto);
+#endif
 	if (_sockfd == POCO_INVALID_SOCKET)
 		error();
 
@@ -1141,7 +1422,11 @@ void SocketImpl::initSocket(int af, int type, int proto)
 	//
 	// In order to have POCO sockets behave the same across platforms, it is
 	// best to just ignore SIGPIPE altogether.
+#if USE_LIBZT
+	// todo: not needed?
+#else
 	setOption(SOL_SOCKET, SO_NOSIGPIPE, 1);
+#endif
 #endif
 }
 
@@ -1153,7 +1438,11 @@ void SocketImpl::ioctl(poco_ioctl_request_t request, int& arg)
 #elif defined(POCO_VXWORKS)
 	int rc = ::ioctl(_sockfd, request, (int) &arg);
 #else
+#if USE_LIBZT
+	int rc = zts_bsd_ioctl(_sockfd, request, &arg);
+#else
 	int rc = ::ioctl(_sockfd, request, &arg);
+#endif
 #endif
 	if (rc != 0) error();
 }
@@ -1166,7 +1455,11 @@ void SocketImpl::ioctl(poco_ioctl_request_t request, void* arg)
 #elif defined(POCO_VXWORKS)
 	int rc = ::ioctl(_sockfd, request, (int) arg);
 #else
-	int rc = ::ioctl(_sockfd, request, arg);
+#if USE_LIBZT
+	int rc = zts_bsd_ioctl(_sockfd, request, &arg);
+#else
+	int rc = ::ioctl(_sockfd, request, &arg);
+#endif
 #endif
 	if (rc != 0) error();
 }
@@ -1175,7 +1468,11 @@ void SocketImpl::ioctl(poco_ioctl_request_t request, void* arg)
 #if defined(POCO_OS_FAMILY_UNIX)
 int SocketImpl::fcntl(poco_fcntl_request_t request)
 {
+#if USE_LIBZT
+	int rc = zts_bsd_fcntl(_sockfd, request, 0);
+#else
 	int rc = ::fcntl(_sockfd, request);
+#endif
 	if (rc == -1) error();
 	return rc;
 }
@@ -1183,7 +1480,11 @@ int SocketImpl::fcntl(poco_fcntl_request_t request)
 
 int SocketImpl::fcntl(poco_fcntl_request_t request, long arg)
 {
+#if USE_LIBZT
+	int rc = zts_bsd_fcntl(_sockfd, request, arg);
+#else
 	int rc = ::fcntl(_sockfd, request, arg);
+#endif
 	if (rc == -1) error();
 	return rc;
 }

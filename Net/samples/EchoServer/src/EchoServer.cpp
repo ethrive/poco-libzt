@@ -154,10 +154,10 @@ private:
 		BUFFER_SIZE = 1024
 	};
 	
-	StreamSocket   _socket;
+	StreamSocket	 _socket;
 	SocketReactor& _reactor;
-	FIFOBuffer     _fifoIn;
-	FIFOBuffer     _fifoOut;
+	FIFOBuffer		 _fifoIn;
+	FIFOBuffer		 _fifoOut;
 };
 
 
@@ -262,9 +262,62 @@ private:
 	bool _helpRequested;
 };
 
+#if USE_LIBZT
+#include <ZeroTierSockets.h>
+#endif
 
 int main(int argc, char** argv)
 {
+#if USE_LIBZT
+	char storage_path[] = "0";
+	long long unsigned net_id = 0x8850338390671cd6LL;
+	char local_addr[] = "0.0.0.0";
+	unsigned int local_port = 8080;
+	int fd, accfd;
+	int err = ZTS_ERR_OK;
+	// Initialize node
+	if ((err = zts_init_from_storage(storage_path)) != ZTS_ERR_OK)
+	{
+		printf("Unable to start service, error = %d. Exiting.\n", err);
+		exit(1);
+	}
+	// Start node
+	if ((err = zts_node_start()) != ZTS_ERR_OK)
+	{
+		printf("Unable to start service, error = %d. Exiting.\n", err);
+		exit(1);
+	}
+	printf("Waiting for node to come online\n");
+	while (!zts_node_is_online())
+	{
+		zts_util_delay(50);
+	}
+	printf("Public identity (node ID) is %llx\n", zts_node_get_id());
+	// Join network
+	printf("Joining network %llx\n", net_id);
+	if (zts_net_join(net_id) != ZTS_ERR_OK)
+	{
+		printf("Unable to join network. Exiting.\n");
+		exit(1);
+	}
+	printf("Don't forget to authorize this device in my.zerotier.com or the web API!\n");
+	printf("Waiting for join to complete\n");
+	while (!zts_net_transport_is_ready(net_id))
+	{
+		zts_util_delay(50);
+	}
+	// Get assigned address (of the family type we care about)
+	int family = zts_util_get_ip_family(local_addr);
+	printf("Waiting for address assignment from network\n");
+	while (!(err = zts_addr_is_assigned(net_id, family)))
+	{
+		zts_util_delay(50);
+	}
+	char ipstr[ZTS_IP_MAX_STR_LEN] = {0};
+	zts_addr_get_str(net_id, family, ipstr, ZTS_IP_MAX_STR_LEN);
+	printf("IP address on network %llx is %s\n", net_id, ipstr);
+#endif
+
 	EchoServer app;
 	return app.run(argc, argv);
 }

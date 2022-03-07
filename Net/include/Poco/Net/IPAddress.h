@@ -112,7 +112,11 @@ public:
 			/// Creates an IPAddress from Windows SOCKET_ADDRESS structure.
 #endif
 
+#ifdef USE_LIBZT
+	IPAddress(const struct zts_sockaddr& sockaddr);
+#else
 	IPAddress(const struct sockaddr& sockaddr);
+#endif
 		/// Same for struct sock_addr on POSIX.
 
 

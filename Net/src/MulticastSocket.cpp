@@ -121,16 +121,29 @@ NetworkInterface MulticastSocket::getInterface() const
 	
 void MulticastSocket::setLoopback(bool flag)
 {
+#ifdef USE_LIBZT
+	if (address().af() == ZTS_AF_INET)
+#else
 	if (address().af() == AF_INET)
+#endif
 	{
 		unsigned char uflag = flag ? 1 : 0;
+#ifdef USE_LIBZT
+		impl()->setOption(ZTS_IPPROTO_IP, ZTS_IP_MULTICAST_LOOP, uflag);
+#else
 		impl()->setOption(IPPROTO_IP, IP_MULTICAST_LOOP, uflag);
+#endif
 	}
 	else
 	{
 #if defined(POCO_HAVE_IPv6)
 		unsigned uflag = flag ? 1 : 0;
+#ifdef USE_LIBZT
+		assert(false);
+		// impl()->setOption(ZTS_IPPROTO_IPV6, ZTS_IPV6_MULTICAST_LOOP, uflag);
+#else
 		impl()->setOption(IPPROTO_IPV6, IPV6_MULTICAST_LOOP, uflag);
+#endif
 #endif
 	}
 }
@@ -139,35 +152,61 @@ void MulticastSocket::setLoopback(bool flag)
 bool MulticastSocket::getLoopback() const
 {
 	bool flag = false;
+#ifdef USE_LIBZT
+	if (address().af() == ZTS_AF_INET)
+#else
 	if (address().af() == AF_INET)
+#endif
 	{
 		unsigned char uflag;
+#ifdef USE_LIBZT
+		impl()->getOption(ZTS_IPPROTO_IP, ZTS_IP_MULTICAST_LOOP, uflag);
+#else
 		impl()->getOption(IPPROTO_IP, IP_MULTICAST_LOOP, uflag);
+#endif
 		flag = uflag != 0;
 	}
 	else
 	{
 #if defined(POCO_HAVE_IPv6)
 		unsigned uflag;
+#ifdef USE_LIBZT
+		assert(false);
+		// impl()->getOption(ZTS_IPPROTO_IPV6, ZTS_IPV6_MULTICAST_LOOP, uflag);
+#else
 		impl()->getOption(IPPROTO_IPV6, IPV6_MULTICAST_LOOP, uflag);
+#endif
 		flag = uflag != 0;
 #endif
 	}
 	return flag;
 }
 
-	
+
 void MulticastSocket::setTimeToLive(unsigned value)
 {
+#ifdef USE_LIBZT
+	if (address().af() == ZTS_AF_INET)
+#else
 	if (address().af() == AF_INET)
+#endif
 	{
 		unsigned char ttl = (unsigned char) value;
+#ifdef USE_LIBZT
+		impl()->setOption(ZTS_IPPROTO_IP, ZTS_IP_MULTICAST_TTL, ttl);
+#else
 		impl()->setOption(IPPROTO_IP, IP_MULTICAST_TTL, ttl);
+#endif
 	}
 	else
 	{
 #if defined(POCO_HAVE_IPv6)
+#ifdef USE_LIBZT
+		assert(false);
+		// impl()->setOption(ZTS_IPPROTO_IPV6, ZTS_IPV6_MULTICAST_HOPS, value);
+#else
 		impl()->setOption(IPPROTO_IPV6, IPV6_MULTICAST_HOPS, value);
+#endif
 #endif
 	}
 }
@@ -176,16 +215,29 @@ void MulticastSocket::setTimeToLive(unsigned value)
 unsigned MulticastSocket::getTimeToLive() const
 {
 	unsigned ttl(0);
+#ifdef USE_LIBZT
+	if (address().af() == ZTS_AF_INET)
+#else
 	if (address().af() == AF_INET)
+#endif
 	{
 		unsigned char cttl;
+#ifdef USE_LIBZT
+		impl()->getOption(ZTS_IPPROTO_IP, ZTS_IP_MULTICAST_TTL, cttl);
+#else
 		impl()->getOption(IPPROTO_IP, IP_MULTICAST_TTL, cttl);
+#endif
 		ttl = cttl;
 	}
 	else
 	{
 #if defined(POCO_HAVE_IPv6)
+#ifdef USE_LIBZT
+		assert(false);
+		// impl()->getOption(ZTS_IPPROTO_IPV6, ZTS_IPV6_MULTICAST_HOPS, ttl);
+#else
 		impl()->getOption(IPPROTO_IPV6, IPV6_MULTICAST_HOPS, ttl);
+#endif
 #endif
 	}
 	return ttl;
@@ -200,20 +252,40 @@ void MulticastSocket::joinGroup(const IPAddress& groupAddress)
 	
 void MulticastSocket::joinGroup(const IPAddress& groupAddress, const NetworkInterface& interfc)
 {
+#ifdef USE_LIBZT
+	if (groupAddress.af() == ZTS_AF_INET)
+#else
 	if (groupAddress.af() == AF_INET)
+#endif
 	{
+#ifdef USE_LIBZT
+		struct zts_ip_mreq mr;
+#else
 		struct ip_mreq mr;
+#endif
 		std::memcpy(&mr.imr_multiaddr, groupAddress.addr(), groupAddress.length());
 		std::memcpy(&mr.imr_interface, interfc.firstAddress(IPAddress::IPv4).addr(), interfc.firstAddress(IPAddress::IPv4).length());
+#ifdef USE_LIBZT
 		impl()->setRawOption(IPPROTO_IP, IP_ADD_MEMBERSHIP, &mr, sizeof(mr));
+#else
+		impl()->setRawOption(IPPROTO_IP, IP_ADD_MEMBERSHIP, &mr, sizeof(mr));
+#endif
 	}
 	else
 	{
 #if defined(POCO_HAVE_IPv6)
+#ifdef USE_LIBZT
+		struct zts_ipv6_mreq mr;
+#else
 		struct ipv6_mreq mr;
+#endif
 		std::memcpy(&mr.ipv6mr_multiaddr, groupAddress.addr(), groupAddress.length());
 		mr.ipv6mr_interface = interfc.index();
+#ifdef USE_LIBZT
+		impl()->setRawOption(ZTS_IPPROTO_IPV6, ZTS_IPV6_ADD_MEMBERSHIP, &mr, sizeof(mr));
+#else
 		impl()->setRawOption(IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP, &mr, sizeof(mr));
+#endif
 #endif
 	}
 }
@@ -264,20 +336,40 @@ void MulticastSocket::leaveGroup(const IPAddress& groupAddress)
 	
 void MulticastSocket::leaveGroup(const IPAddress& groupAddress, const NetworkInterface& interfc)
 {
+#ifdef USE_LIBZT
+	if (groupAddress.af() == ZTS_AF_INET)
+#else
 	if (groupAddress.af() == AF_INET)
+#endif
 	{
+#ifdef USE_LIBZT
+		struct zts_ip_mreq mr;
+#else
 		struct ip_mreq mr;
+#endif
 		std::memcpy(&mr.imr_multiaddr, groupAddress.addr(), groupAddress.length());
 		std::memcpy(&mr.imr_interface, interfc.firstAddress(IPAddress::IPv4).addr(), interfc.firstAddress(IPAddress::IPv4).length());
+#ifdef USE_LIBZT
+		impl()->setRawOption(ZTS_IPPROTO_IP, ZTS_IP_DROP_MEMBERSHIP, &mr, sizeof(mr));
+#else
 		impl()->setRawOption(IPPROTO_IP, IP_DROP_MEMBERSHIP, &mr, sizeof(mr));
+#endif
 	}
 	else
 	{
 #if defined(POCO_HAVE_IPv6)
+#ifdef USE_LIBZT
+		struct zts_ipv6_mreq mr;
+#else
 		struct ipv6_mreq mr;
+#endif
 		std::memcpy(&mr.ipv6mr_multiaddr, groupAddress.addr(), groupAddress.length());
 		mr.ipv6mr_interface = interfc.index();
+#ifdef USE_LIBZT
+		impl()->setRawOption(ZTS_IPPROTO_IPV6, ZTS_IPV6_DROP_MEMBERSHIP, &mr, sizeof(mr));
+#else
 		impl()->setRawOption(IPPROTO_IPV6, IPV6_DROP_MEMBERSHIP, &mr, sizeof(mr));
+#endif
 #endif
 	}
 }

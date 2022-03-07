@@ -132,10 +132,14 @@ void ICMPClientTest::onBegin(const void* pSender, ICMPEventArgs& args)
 {
 	Poco::FastMutex::ScopedLock l(_mutex);
 	std::ostringstream os;
-	os << std::endl << "Pinging " << args.hostName() << " [" << args.hostAddress() << "] with " 
-		<< args.dataSize() << " bytes of data:" 
+#ifdef USE_LIBZT
+	assert(false);
+#else
+	os << std::endl << "Pinging " << args.hostName() << " [" << args.hostAddress() << "] with "
+		<< args.dataSize() << " bytes of data:"
 		<< std::endl << "-------------------------------------------------------" << std::endl;
 	std::cout << os.str() << std::endl;
+#endif
 }
 
 
