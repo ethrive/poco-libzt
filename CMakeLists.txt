@@ -487,8 +487,8 @@ install(
 )
 
 if(POCO_UNBUNDLED)
-	install(FILES cmake/FindPCRE.cmake
-			DESTINATION "${PocoConfigPackageLocation}")
+    # install(FILES cmake/FindPCRE.cmake
+		# DESTINATION "${PocoConfigPackageLocation}")
 	install(FILES cmake/V39/FindEXPAT.cmake
 			DESTINATION "${PocoConfigPackageLocation}/V39")
 	install(FILES cmake/V313/FindSQLite3.cmake
