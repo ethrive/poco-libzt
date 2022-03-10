@@ -15,12 +15,6 @@
 #include "Poco/RegularExpression.h"
 #include "Poco/Exception.h"
 #include <sstream>
-#if defined(POCO_UNBUNDLED)
-#include <pcre.h>
-#else
-#include "pcre_config.h"
-#include "pcre.h"
-#endif
 
 
 namespace Poco {
@@ -31,24 +25,11 @@ const int RegularExpression::OVEC_SIZE = 63; // must be multiple of 3
 
 RegularExpression::RegularExpression(const std::string& pattern, int options, bool study): _pcre(0), _extra(0)
 {
-	const char* error;
-	int offs;
-	_pcre = pcre_compile(pattern.c_str(), options, &error, &offs, 0);
-	if (!_pcre)
-	{
-		std::ostringstream msg;
-		msg << error << " (at offset " << offs << ")";
-		throw RegularExpressionException(msg.str());
-	}
-	if (study)
-		_extra = pcre_study(reinterpret_cast<pcre*>(_pcre), 0, &error);
 }
 
 
 RegularExpression::~RegularExpression()
 {
-	if (_pcre)  pcre_free(reinterpret_cast<pcre*>(_pcre));
-	if (_extra) pcre_free(reinterpret_cast<struct pcre_extra*>(_extra));
 }
 
 
@@ -56,31 +37,7 @@ int RegularExpression::match(const std::string& subject, std::string::size_type 
 {
 	poco_assert (offset <= subject.length());
 
-	int ovec[OVEC_SIZE];
-	int rc = pcre_exec(reinterpret_cast<pcre*>(_pcre), reinterpret_cast<struct pcre_extra*>(_extra), subject.c_str(), int(subject.size()), int(offset), options & 0xFFFF, ovec, OVEC_SIZE);
-	if (rc == PCRE_ERROR_NOMATCH)
-	{
-		mtch.offset = std::string::npos;
-		mtch.length = 0;
-		return 0;
-	}
-	else if (rc == PCRE_ERROR_BADOPTION)
-	{
-		throw RegularExpressionException("bad option");
-	}
-	else if (rc == 0)
-	{
-		throw RegularExpressionException("too many captured substrings");
-	}
-	else if (rc < 0)
-	{
-		std::ostringstream msg;
-		msg << "PCRE error " << rc;
-		throw RegularExpressionException(msg.str());
-	}
-	mtch.offset = ovec[0] < 0 ? std::string::npos : ovec[0];
-	mtch.length = ovec[1] - mtch.offset;
-	return rc;
+	return 0;
 }
 
 
@@ -88,37 +45,7 @@ int RegularExpression::match(const std::string& subject, std::string::size_type 
 {
 	poco_assert (offset <= subject.length());
 
-	matches.clear();
-
-	int ovec[OVEC_SIZE];
-	int rc = pcre_exec(reinterpret_cast<pcre*>(_pcre), reinterpret_cast<struct pcre_extra*>(_extra), subject.c_str(), int(subject.size()), int(offset), options & 0xFFFF, ovec, OVEC_SIZE);
-	if (rc == PCRE_ERROR_NOMATCH)
-	{
-		return 0;
-	}
-	else if (rc == PCRE_ERROR_BADOPTION)
-	{
-		throw RegularExpressionException("bad option");
-	}
-	else if (rc == 0)
-	{
-		throw RegularExpressionException("too many captured substrings");
-	}
-	else if (rc < 0)
-	{
-		std::ostringstream msg;
-		msg << "PCRE error " << rc;
-		throw RegularExpressionException(msg.str());
-	}
-	matches.reserve(rc);
-	for (int i = 0; i < rc; ++i)
-	{
-		Match m;
-		m.offset = ovec[i*2] < 0 ? std::string::npos : ovec[i*2] ;
-		m.length = ovec[i*2 + 1] - m.offset;
-		matches.push_back(m);
-	}
-	return rc;
+	return 0;
 }
 
 
@@ -203,72 +130,7 @@ std::string::size_type RegularExpression::substOne(std::string& subject, std::st
 {
 	if (offset >= subject.length()) return std::string::npos;
 
-	int ovec[OVEC_SIZE];
-	int rc = pcre_exec(reinterpret_cast<pcre*>(_pcre), reinterpret_cast<struct pcre_extra*>(_extra), subject.c_str(), int(subject.size()), int(offset), options & 0xFFFF, ovec, OVEC_SIZE);
-	if (rc == PCRE_ERROR_NOMATCH)
-	{
-		return std::string::npos;
-	}
-	else if (rc == PCRE_ERROR_BADOPTION)
-	{
-		throw RegularExpressionException("bad option");
-	}
-	else if (rc == 0)
-	{
-		throw RegularExpressionException("too many captured substrings");
-	}
-	else if (rc < 0)
-	{
-		std::ostringstream msg;
-		msg << "PCRE error " << rc;
-		throw RegularExpressionException(msg.str());
-	}
-	std::string result;
-	std::string::size_type len = subject.length();
-	std::string::size_type pos = 0;
-	std::string::size_type rp = std::string::npos;
-	while (pos < len)
-	{
-		if (ovec[0] == pos)
-		{
-			std::string::const_iterator it  = replacement.begin();
-			std::string::const_iterator end = replacement.end();
-			while (it != end)
-			{
-				if (*it == '$' && !(options & RE_NO_VARS))
-				{
-					++it;
-					if (it != end)
-					{
-						char d = *it;
-						if (d >= '0' && d <= '9')
-						{
-							int c = d - '0';
-							if (c < rc)
-							{
-								int o = ovec[c*2];
-								int l = ovec[c*2 + 1] - o;
-								result.append(subject, o, l);
-							}
-						}
-						else
-						{
-							result += '$';
-							result += d;
-						}
-						++it;
-					}
-					else result += '$';
-				}
-				else result += *it++;
-			}
-			pos = ovec[1];
-			rp = result.length();
-		}
-		else result += subject[pos++];
-	}
-	subject = result;
-	return rp;
+	return 0;
 }
 
 
