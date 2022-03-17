@@ -13,6 +13,7 @@ if (MSVC AND BUILD_SHARED_LIBS)
 endif ()
 
 if(ENABLE_LIBZT)
+	find_package(unofficial-libzt CONFIG REQUIRED)
 	set(POCO_SOCKET_IMPL libzt)
 	add_compile_definitions(USE_LIBZT=1)
 else()
@@ -29,8 +30,8 @@ set_target_properties(Net
 		)
 
 if (${POCO_SOCKET_IMPL} STREQUAL "libzt")
-	target_include_directories(Net PUBLIC /opt/homebrew/Cellar/libzt/1.8.1/include)
-	target_link_directories(Net PUBLIC /opt/homebrew/Cellar/libzt/1.8.1/lib)
+	target_include_directories(Net PUBLIC ${unofficial_libzt_INCLUDE_DIRS})
+	target_link_directories(Net PUBLIC ${unofficial_libzt_LIBRARY_DIRS})
 	target_link_libraries(Net PUBLIC Poco::Foundation PUBLIC zt)
 else ()
 	target_link_libraries(Net PUBLIC Poco::Foundation)
