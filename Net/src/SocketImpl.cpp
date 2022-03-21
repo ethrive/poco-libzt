@@ -16,6 +16,7 @@
 #include "Poco/Net/NetException.h"
 #include "Poco/Net/StreamSocketImpl.h"
 #include "Poco/NumberFormatter.h"
+#include "Poco/Thread.h"
 #include "Poco/Timestamp.h"
 #include <string.h> // FD_SET needs memset on some platforms, so we can't use <cstring>
 
@@ -159,7 +160,7 @@ void SocketImpl::connect(const SocketAddress& address)
 		rc = ::connect(_sockfd, (sockaddr*) address.addr(), address.length());
 #else
 #ifdef USE_LIBZT
-		rc = zts_bsd_connect(_sockfd, address.addr(), address.length());
+		int rc = zts_connect(_sockfd, address.host().toString().c_str(), address.port(), 0);
 #else
 		rc = ::connect(_sockfd, address.addr(), address.length());
 #endif
@@ -187,7 +188,7 @@ void SocketImpl::connect(const SocketAddress& address, const Poco::Timespan& tim
 		int rc = ::connect(_sockfd, (sockaddr*) address.addr(), address.length());
 #else
 #ifdef USE_LIBZT
-		int rc = zts_bsd_connect(_sockfd, address.addr(), address.length());
+		int rc = zts_connect(_sockfd, address.host().toString().c_str(), address.port(), 0);
 #else
 		int rc = ::connect(_sockfd, address.addr(), address.length());
 #endif
@@ -223,9 +224,9 @@ void SocketImpl::connectNB(const SocketAddress& address)
 	int rc = ::connect(_sockfd, (sockaddr*) address.addr(), address.length());
 #else
 #ifdef USE_LIBZT
-        int rc = zts_bsd_connect(_sockfd, address.addr(), address.length());
+	int rc = zts_bsd_connect(_sockfd, address.addr(), address.length());
 #else
-        int rc = ::connect(_sockfd, address.addr(), address.length());
+	int rc = ::connect(_sockfd, address.addr(), address.length());
 #endif
 #endif
 	if (rc != 0)
@@ -1367,10 +1368,10 @@ void SocketImpl::setBlocking(bool flag)
 	ioctl(FIONBIO, arg);
 #else
 #if USE_LIBZT
-	int arg = fcntl(ZTS_F_GETFL);
-	long flags = arg & ~ZTS_O_NONBLOCK;
-	if (!flag) flags |= ZTS_O_NONBLOCK;
-	(void) fcntl(ZTS_F_SETFL, flags);
+	// int arg = fcntl(ZTS_F_GETFL);
+	// long flags = arg & ~ZTS_O_NONBLOCK;
+	// if (!flag) flags |= ZTS_O_NONBLOCK;
+	// (void) fcntl(ZTS_F_SETFL, flags);
 #else
 	int arg = fcntl(F_GETFL);
 	long flags = arg & ~O_NONBLOCK;
@@ -1409,7 +1410,7 @@ void SocketImpl::initSocket(int af, int type, int proto)
 	poco_assert (_sockfd == POCO_INVALID_SOCKET);
 
 #if USE_LIBZT
-	_sockfd = zts_bsd_socket(af, type, proto);
+	_sockfd = zts_socket(af, type, proto);
 #else
 	_sockfd = ::socket(af, type, proto);
 #endif

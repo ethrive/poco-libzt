@@ -183,7 +183,7 @@
 		#define poco_ioctl_request_t int
 	#endif
 #if USE_LIBZT
-	#define poco_closesocket(s)  zts_bsd_close(s)
+	#define poco_closesocket(s)  zts_close(s)
 	#define POCO_EINTR           ZTS_EINTR
 	#define POCO_EACCES          ZTS_EACCES
 	#define POCO_EFAULT          ZTS_EFAULT

@@ -67,14 +67,23 @@ RawSocketImpl::~RawSocketImpl()
 
 void RawSocketImpl::init(int af)
 {
+#ifdef USE_LIBZT
+	init2(af, ZTS_IPPROTO_RAW);
+#else
 	init2(af, IPPROTO_RAW);
+#endif
 }
 
 
 void RawSocketImpl::init2(int af, int proto)
 {
+#ifdef USE_LIBZT
+	initSocket(af, ZTS_SOCK_RAW, proto);
+	setOption(ZTS_IPPROTO_IP, IP_HDRINCL, 0);
+#else
 	initSocket(af, SOCK_RAW, proto);
 	setOption(IPPROTO_IP, IP_HDRINCL, 0);
+#endif
 }
 
 
