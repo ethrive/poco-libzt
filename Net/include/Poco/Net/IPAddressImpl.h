@@ -169,7 +169,11 @@ public:
 	IPv6AddressImpl& operator = (const IPv6AddressImpl&);
 
 private:
+#ifdef USE_LIBZT
+	struct zts_in6_addr _addr;
+#else
 	struct in6_addr _addr;
+#endif
 	unsigned int    _scope;
 };
 
