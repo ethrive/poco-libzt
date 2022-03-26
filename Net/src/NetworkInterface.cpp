@@ -1668,6 +1668,9 @@ NetworkInterface::Map NetworkInterface::map(bool ipOnly, bool upOnly)
 			}
 #endif // POCO_NO_LINUX_IF_PACKET_H
 			case AF_INET:
+#ifdef USE_LIBZT
+				assert(false);
+#else
 				ifIndex = if_nametoindex(iface->ifa_name);
 				ifIt = result.find(ifIndex);
 				intf = NetworkInterface(ifIndex);
@@ -1685,10 +1688,13 @@ NetworkInterface::Map NetworkInterface::map(bool ipOnly, bool upOnly)
 					broadcastAddress = IPAddress(*(iface->ifa_dstaddr));
 				else
 					broadcastAddress = IPAddress();
-
+#endif
 				break;
 #if defined(POCO_HAVE_IPv6)
 			case AF_INET6:
+#ifdef USE_LIBZT
+				assert(false);
+#else
 				ifIndex = if_nametoindex(iface->ifa_name);
 				ifIt = result.find(ifIndex);
 				intf = NetworkInterface(ifIndex);
@@ -1700,7 +1706,7 @@ NetworkInterface::Map NetworkInterface::map(bool ipOnly, bool upOnly)
 				address = IPAddress(&reinterpret_cast<const struct sockaddr_in6*>(iface->ifa_addr)->sin6_addr, sizeof(struct in6_addr), ifIndex);
 				subnetMask = IPAddress(*(iface->ifa_netmask));
 				broadcastAddress = IPAddress();
-
+#endif
 				break;
 #endif
 			default:
