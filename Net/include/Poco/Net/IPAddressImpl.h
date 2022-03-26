@@ -112,8 +112,12 @@ public:
 	bool operator == (const IPv4AddressImpl& addr) const;
 	bool operator != (const IPv4AddressImpl& addr) const;
 
-private:	
+private:
+#ifdef USE_LIBZT
+	struct zts_in_addr _addr;
+#else
 	struct in_addr _addr;
+#endif
 };
 
 
