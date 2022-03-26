@@ -32,6 +32,7 @@
 	#include <iphlpapi.h>
 	#include <ipifcons.h>
 #endif
+#include <cassert>
 #include <cstring>
 #include <fstream>
 #include <iostream>
